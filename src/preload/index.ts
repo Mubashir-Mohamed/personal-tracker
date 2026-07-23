@@ -7,6 +7,9 @@ import type {
   Category,
   DayType,
   JobHuntLogEntry,
+  RoutineRun,
+  RoutineRunDetail,
+  RoutineWithLatestRun,
   ScheduleRule,
   WeekStats
 } from '../shared/types'
@@ -37,7 +40,21 @@ const api = {
     const listener = (): void => callback()
     ipcRenderer.on('day-changed', listener)
     return () => ipcRenderer.removeListener('day-changed', listener)
-  }
+  },
+  getRoutines: (): Promise<RoutineWithLatestRun[]> => ipcRenderer.invoke('get-routines'),
+  getRoutineRuns: (routineId: number): Promise<RoutineRun[]> =>
+    ipcRenderer.invoke('get-routine-runs', routineId),
+  getRoutineRunDetail: (runId: number): Promise<RoutineRunDetail | null> =>
+    ipcRenderer.invoke('get-routine-run-detail', runId),
+  linkRoutineOutput: (
+    routineId: number,
+    watchPath: string,
+    scheduleLabel: string
+  ): Promise<RoutineWithLatestRun[]> =>
+    ipcRenderer.invoke('link-routine-output', routineId, watchPath, scheduleLabel),
+  checkRoutinesNow: (): Promise<RoutineWithLatestRun[]> => ipcRenderer.invoke('check-routines-now'),
+  pickWatchFile: (): Promise<string | null> => ipcRenderer.invoke('pick-watch-file'),
+  openRoutineRunFile: (runId: number): Promise<void> => ipcRenderer.invoke('open-routine-run-file', runId)
 }
 
 export type PersonalTrackerApi = typeof api

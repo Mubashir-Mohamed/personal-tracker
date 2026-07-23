@@ -8,6 +8,7 @@ import { startNotificationTicker } from './notifications'
 import { createTray } from './tray'
 import { registerIpcHandlers } from './ipc'
 import { applyAutoLaunch } from './autoLaunch'
+import { startRoutinesWatcher } from './routines'
 
 let mainWindow: BrowserWindow | null = null
 let isQuitting = false
@@ -78,6 +79,7 @@ app.whenReady().then(() => {
     mainWindow?.webContents.send('day-changed')
   })
   startNotificationTicker()
+  startRoutinesWatcher()
 
   applyAutoLaunch(getSetting('autoLaunch')).catch((err) => console.error('auto-launch setup failed', err))
 

@@ -70,3 +70,45 @@ export interface WeekStats {
   familyStreak: number
   totalApplications: number
 }
+
+export type RunStatus = 'parsed' | 'error'
+
+export interface ParsedSheet {
+  name: string
+  rows: string[][]
+}
+
+export interface ParsedWorkbook {
+  sheets: ParsedSheet[]
+}
+
+export interface Routine {
+  id: number
+  taskId: string
+  name: string
+  description: string
+  prompt: string
+  scheduleLabel: string | null
+  watchPath: string | null
+  createdAt: string
+}
+
+export interface RoutineWithLatestRun extends Routine {
+  latestRunDate: string | null
+  runCount: number
+}
+
+export interface RoutineRun {
+  id: number
+  routineId: number
+  runDate: string
+  detectedAt: string
+  sourceMtime: string
+  archivedPath: string
+  status: RunStatus
+  errorMessage: string | null
+}
+
+export interface RoutineRunDetail extends RoutineRun {
+  parsed: ParsedWorkbook | null
+}

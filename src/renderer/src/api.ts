@@ -5,6 +5,9 @@ import type {
   Category,
   DayType,
   JobHuntLogEntry,
+  RoutineRun,
+  RoutineRunDetail,
+  RoutineWithLatestRun,
   ScheduleRule,
   WeekStats
 } from '../../shared/types'
@@ -84,6 +87,98 @@ function buildMockApi(): Window['api'] {
     totalApplications: 7
   }
 
+  const routines: RoutineWithLatestRun[] = [
+    {
+      id: 1,
+      taskId: 'daily-job-listing',
+      name: 'daily-job-listing',
+      description: 'Job Hunting',
+      prompt:
+        'Using Apify (LinkedIn, Indeed, Naukri job scrapers), find all jobs posted in the last 24 hours matching my resume...',
+      scheduleLabel: 'Daily at 7:03 AM',
+      watchPath: '/Users/mock/Job Matches/job_openings_report.xlsx',
+      createdAt: today.toISOString(),
+      latestRunDate: dateStr,
+      runCount: 3
+    },
+    {
+      id: 2,
+      taskId: 'weekly-digest',
+      name: 'weekly-digest',
+      description: 'Summarize saved newsletters into a weekly digest',
+      prompt: 'Summarize this week\'s saved newsletters into a short digest.',
+      scheduleLabel: null,
+      watchPath: null,
+      createdAt: today.toISOString(),
+      latestRunDate: null,
+      runCount: 0
+    }
+  ]
+
+  const routineRuns: RoutineRun[] = [-2, -1, 0].map((offset, i) => {
+    const d = new Date(today.getTime() + offset * 86_400_000)
+    return {
+      id: i + 1,
+      routineId: 1,
+      runDate: d.toISOString().slice(0, 10),
+      detectedAt: d.toISOString(),
+      sourceMtime: d.toISOString(),
+      archivedPath: `/Users/mock/routine-archives/1/${d.toISOString().slice(0, 10)}.xlsx`,
+      status: 'parsed',
+      errorMessage: null
+    }
+  })
+
+  const runDetails: Record<number, RoutineRunDetail> = Object.fromEntries(
+    routineRuns.map((run) => [
+      run.id,
+      {
+        ...run,
+        parsed: {
+          sheets: [
+            {
+              name: 'Job Openings',
+              rows: [
+                ['Daily Job Openings Report — Last 24 Hours'],
+                [`Run date: ${run.runDate}  |  Priority locations: Kochi > Thiruvananthapuram`],
+                [],
+                ['Title', 'Company', 'Location', 'Date Posted', 'Source', 'Match Score /100', 'Reason', 'Direct Link'],
+                [
+                  'Senior Software Engineer',
+                  'NOV',
+                  'Kochi',
+                  run.runDate,
+                  'LinkedIn',
+                  '68',
+                  'Generic senior SWE title at an established engineering company.',
+                  'https://in.linkedin.com/jobs/view/example'
+                ],
+                [
+                  'Backend Engineer',
+                  'Zoho',
+                  'Chennai',
+                  run.runDate,
+                  'Naukri',
+                  '74',
+                  'Strong stack overlap.',
+                  'https://www.naukri.com/job-listings/example'
+                ]
+              ]
+            },
+            {
+              name: 'Notes',
+              rows: [
+                ['Notes & Gaps — Daily Job Openings Report'],
+                ['1. No resume on file'],
+                ['Match scores are generic estimates, not personalized. Attach a resume for accuracy.']
+              ]
+            }
+          ]
+        }
+      }
+    ])
+  )
+
   return {
     getToday: async () => ({ date: dateStr, dayType: 'weekday', blocks }),
     getCategories: async () => categories,
@@ -120,7 +215,21 @@ function buildMockApi(): Window['api'] {
     setSetting: async (key, value) => {
       ;(settings as unknown as Record<string, unknown>)[key] = value
     },
-    onDayChanged: () => () => {}
+    onDayChanged: () => () => {},
+    getRoutines: async () => routines,
+    getRoutineRuns: async (routineId) => routineRuns.filter((r) => r.routineId === routineId),
+    getRoutineRunDetail: async (runId) => runDetails[runId] ?? null,
+    linkRoutineOutput: async (routineId, watchPath, scheduleLabel) => {
+      const r = routines.find((x) => x.id === routineId)
+      if (r) {
+        r.watchPath = watchPath
+        r.scheduleLabel = scheduleLabel
+      }
+      return routines
+    },
+    checkRoutinesNow: async () => routines,
+    pickWatchFile: async () => '/Users/mock/picked-file.xlsx',
+    openRoutineRunFile: async () => {}
   }
 }
 
@@ -136,6 +245,13 @@ export type {
   DayStat,
   DayType,
   JobHuntLogEntry,
+  ParsedSheet,
+  ParsedWorkbook,
+  Routine,
+  RoutineRun,
+  RoutineRunDetail,
+  RoutineWithLatestRun,
+  RunStatus,
   ScheduleRule,
   WeekStats
 } from '../../shared/types'

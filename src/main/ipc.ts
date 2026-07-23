@@ -1,4 +1,4 @@
-import { ipcMain } from 'electron'
+import { ipcMain, dialog, shell, BrowserWindow } from 'electron'
 import {
   getBlocksForDate,
   getCategories,
@@ -14,6 +14,8 @@ import {
 import { dayTypeFor, todayString, ensureBlocksForDate } from './scheduler'
 import { getWeekDayStats, getStreakForKind } from './stats'
 import { applyAutoLaunch } from './autoLaunch'
+import { getRoutines, getRoutineRuns, getRoutineRunDetail, linkRoutineOutput } from './routinesDb'
+import { checkRoutinesNow } from './routines'
 import type { AppSettings, BlockStatus, DayType, JobHuntLogEntry } from '../shared/types'
 
 export function registerIpcHandlers(): void {
@@ -71,5 +73,39 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('set-setting', async (_e, key: keyof AppSettings, value: string | number | boolean) => {
     setSetting(key, value as never)
     if (key === 'autoLaunch') await applyAutoLaunch(value as boolean)
+  })
+
+  ipcMain.handle('get-routines', () => getRoutines())
+
+  ipcMain.handle('get-routine-runs', (_e, routineId: number) => getRoutineRuns(routineId))
+
+  ipcMain.handle('get-routine-run-detail', (_e, runId: number) => getRoutineRunDetail(runId) ?? null)
+
+  ipcMain.handle(
+    'link-routine-output',
+    async (_e, routineId: number, watchPath: string, scheduleLabel: string) => {
+      linkRoutineOutput(routineId, watchPath, scheduleLabel)
+      await checkRoutinesNow()
+      return getRoutines()
+    }
+  )
+
+  ipcMain.handle('check-routines-now', async () => {
+    await checkRoutinesNow()
+    return getRoutines()
+  })
+
+  ipcMain.handle('pick-watch-file', async () => {
+    const win = BrowserWindow.getFocusedWindow()
+    const result = win
+      ? await dialog.showOpenDialog(win, { properties: ['openFile'] })
+      : await dialog.showOpenDialog({ properties: ['openFile'] })
+    if (result.canceled || result.filePaths.length === 0) return null
+    return result.filePaths[0]
+  })
+
+  ipcMain.handle('open-routine-run-file', (_e, runId: number) => {
+    const run = getRoutineRunDetail(runId)
+    if (run) shell.openPath(run.archivedPath)
   })
 }

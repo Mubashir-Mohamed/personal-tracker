@@ -67,6 +67,30 @@ export function initDb(): Database.Database {
       key TEXT PRIMARY KEY,
       value TEXT NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS routines (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      task_id TEXT NOT NULL UNIQUE,
+      name TEXT NOT NULL,
+      description TEXT NOT NULL,
+      prompt TEXT NOT NULL,
+      schedule_label TEXT,
+      watch_path TEXT,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS routine_runs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      routine_id INTEGER NOT NULL REFERENCES routines(id),
+      run_date TEXT NOT NULL,
+      detected_at TEXT NOT NULL,
+      source_mtime TEXT NOT NULL,
+      archived_path TEXT NOT NULL,
+      status TEXT NOT NULL,
+      error_message TEXT,
+      parsed_json TEXT,
+      UNIQUE(routine_id, run_date)
+    );
   `)
 
   seedDefaults()
