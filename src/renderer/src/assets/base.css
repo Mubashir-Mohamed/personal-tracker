@@ -1,34 +1,28 @@
 :root {
-  --ev-c-white: #ffffff;
-  --ev-c-white-soft: #f8f8f8;
-  --ev-c-white-mute: #f2f2f2;
+  --bg: #0b0e14;
+  --bg-elevated: #11141d;
+  --bg-card: #161a24;
+  --bg-card-hover: #1c2130;
+  --border: #232838;
+  --border-soft: #1b2030;
 
-  --ev-c-black: #1b1b1f;
-  --ev-c-black-soft: #222222;
-  --ev-c-black-mute: #282828;
+  --text-primary: #e7e9ee;
+  --text-secondary: #9aa3b2;
+  --text-tertiary: #5f6b7f;
 
-  --ev-c-gray-1: #515c67;
-  --ev-c-gray-2: #414853;
-  --ev-c-gray-3: #32363f;
+  --accent: #6c8dff;
+  --accent-soft: rgba(108, 141, 255, 0.14);
+  --success: #34d399;
+  --success-soft: rgba(52, 211, 153, 0.14);
+  --warning: #fbbf24;
+  --danger: #f87171;
+  --danger-soft: rgba(248, 113, 113, 0.14);
 
-  --ev-c-text-1: rgba(255, 255, 245, 0.86);
-  --ev-c-text-2: rgba(235, 235, 245, 0.6);
-  --ev-c-text-3: rgba(235, 235, 245, 0.38);
+  --radius-lg: 18px;
+  --radius-md: 12px;
+  --radius-sm: 8px;
 
-  --ev-button-alt-border: transparent;
-  --ev-button-alt-text: var(--ev-c-text-1);
-  --ev-button-alt-bg: var(--ev-c-gray-3);
-  --ev-button-alt-hover-border: transparent;
-  --ev-button-alt-hover-text: var(--ev-c-text-1);
-  --ev-button-alt-hover-bg: var(--ev-c-gray-2);
-}
-
-:root {
-  --color-background: var(--ev-c-black);
-  --color-background-soft: var(--ev-c-black-soft);
-  --color-background-mute: var(--ev-c-black-mute);
-
-  --color-text: var(--ev-c-text-1);
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.24);
 }
 
 *,
@@ -41,24 +35,33 @@
 
 ul {
   list-style: none;
+  padding: 0;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+}
+
+input {
+  font: inherit;
+  color: inherit;
 }
 
 body {
   min-height: 100vh;
-  color: var(--color-text);
-  background: var(--color-background);
-  line-height: 1.6;
+  color: var(--text-primary);
+  background: var(--bg);
+  line-height: 1.5;
   font-family:
-    Inter,
     -apple-system,
     BlinkMacSystemFont,
+    'Inter',
     'Segoe UI',
     Roboto,
     Oxygen,
     Ubuntu,
     Cantarell,
-    'Fira Sans',
-    'Droid Sans',
     'Helvetica Neue',
     sans-serif;
   text-rendering: optimizeLegibility;
