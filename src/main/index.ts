@@ -61,6 +61,9 @@ function openDashboard(): void {
 app.whenReady().then(() => {
   electronApp.setAppUserModelId('com.personaltracker.app')
 
+  // Menu bar app: live in the tray only, not the Dock or Cmd+Tab.
+  if (process.platform === 'darwin') app.dock?.hide()
+
   app.on('browser-window-created', (_, window) => {
     optimizer.watchWindowShortcuts(window)
   })
