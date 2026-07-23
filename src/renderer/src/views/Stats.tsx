@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 import { format, parseISO } from 'date-fns'
 import { api } from '../api'
+import { FlameIcon, SendIcon, CheckRingIcon } from '../icons'
 import type { Category, WeekStats } from '../api'
 
 export default function Stats(): React.JSX.Element {
@@ -53,21 +54,64 @@ export default function Stats(): React.JSX.Element {
       </div>
 
       <div className="stat-grid">
-        <div className="card stat-tile">
-          <div className="stat-tile-label">Job hunt streak</div>
+        <div className="card card-pad stat-tile">
+          <div className="stat-tile-top">
+            <div className="stat-tile-label">Job hunt streak</div>
+            <div className="stat-tile-icon tint-accent">
+              <FlameIcon size={16} />
+            </div>
+          </div>
           <div className="stat-tile-value accent-accent">{weekStats.jobHuntStreak}d</div>
         </div>
-        <div className="card stat-tile">
-          <div className="stat-tile-label">Family time streak</div>
+        <div className="card card-pad stat-tile">
+          <div className="stat-tile-top">
+            <div className="stat-tile-label">Family time streak</div>
+            <div className="stat-tile-icon tint-success">
+              <FlameIcon size={16} />
+            </div>
+          </div>
           <div className="stat-tile-value accent-success">{weekStats.familyStreak}d</div>
         </div>
-        <div className="card stat-tile">
-          <div className="stat-tile-label">Applications this week</div>
+        <div className="card card-pad stat-tile">
+          <div className="stat-tile-top">
+            <div className="stat-tile-label">Applications this week</div>
+            <div className="stat-tile-icon tint-accent">
+              <SendIcon size={15} />
+            </div>
+          </div>
           <div className="stat-tile-value">{weekStats.totalApplications}</div>
         </div>
-        <div className="card stat-tile">
-          <div className="stat-tile-label">Avg. adherence</div>
+        <div className="card card-pad stat-tile">
+          <div className="stat-tile-top">
+            <div className="stat-tile-label">Avg. adherence</div>
+            <div className="stat-tile-icon tint-success">
+              <CheckRingIcon size={16} />
+            </div>
+          </div>
           <div className="stat-tile-value">{avgAdherence}%</div>
+        </div>
+      </div>
+
+      <div className="card card-pad" style={{ marginBottom: 20 }}>
+        <div className="section-title">Daily adherence</div>
+        <div className="heatmap-row">
+          {weekStats.days.map((day) => (
+            <div
+              key={day.date}
+              className="heatmap-cell"
+              style={{ ['--fill' as string]: `${day.adherencePct}%` }}
+              title={`${format(parseISO(day.date), 'EEEE')}: ${day.adherencePct}% adherence`}
+            >
+              {day.adherencePct}%
+            </div>
+          ))}
+        </div>
+        <div className="heatmap-row">
+          {weekStats.days.map((day) => (
+            <div key={day.date} className="heatmap-day-label" style={{ flex: 1 }}>
+              {format(parseISO(day.date), 'EEE')}
+            </div>
+          ))}
         </div>
       </div>
 
@@ -75,6 +119,14 @@ export default function Stats(): React.JSX.Element {
         <div className="section-title">Hours completed by category</div>
         <ResponsiveContainer width="100%" height={260}>
           <BarChart data={chartData}>
+            <defs>
+              {categories.map((cat) => (
+                <linearGradient key={cat.id} id={`grad-${cat.id}`} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor={cat.color} stopOpacity={0.95} />
+                  <stop offset="100%" stopColor={cat.color} stopOpacity={0.55} />
+                </linearGradient>
+              ))}
+            </defs>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--border-soft)" vertical={false} />
             <XAxis
               dataKey="day"
@@ -85,6 +137,7 @@ export default function Stats(): React.JSX.Element {
             />
             <YAxis stroke="var(--text-tertiary)" fontSize={12} tickLine={false} axisLine={false} width={28} />
             <Tooltip
+              cursor={{ fill: 'var(--bg-elevated)' }}
               contentStyle={{
                 background: 'var(--bg-elevated)',
                 border: '1px solid var(--border)',
@@ -93,7 +146,13 @@ export default function Stats(): React.JSX.Element {
               }}
             />
             {categories.map((cat) => (
-              <Bar key={cat.id} dataKey={cat.name} stackId="hours" fill={cat.color} radius={[2, 2, 2, 2]} />
+              <Bar
+                key={cat.id}
+                dataKey={cat.name}
+                stackId="hours"
+                fill={`url(#grad-${cat.id})`}
+                radius={[2, 2, 2, 2]}
+              />
             ))}
           </BarChart>
         </ResponsiveContainer>

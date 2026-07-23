@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { format as formatDate } from 'date-fns'
 import { api } from '../api'
+import { CategoryIcon } from '../icons'
 import type { BlockInstanceWithCategory, BlockStatus, DayType, JobHuntLogEntry } from '../api'
 
 interface TodayData {
@@ -26,6 +27,12 @@ function addMinutesToTime(t: string, delta: number): string {
   const h = Math.floor(total / 60)
   const m = total % 60
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+}
+
+function greeting(hour: number): string {
+  if (hour < 12) return 'Good morning'
+  if (hour < 17) return 'Good afternoon'
+  return 'Good evening'
 }
 
 function statusChip(
@@ -108,6 +115,67 @@ function JobHuntLogWidget({ date }: { date: string }): React.JSX.Element {
   )
 }
 
+function ProgressRing({ fraction }: { fraction: number }): React.JSX.Element {
+  const radius = 32
+  const stroke = 6
+  const circumference = 2 * Math.PI * radius
+  const offset = circumference * (1 - Math.min(1, Math.max(0, fraction)))
+  return (
+    <div className="progress-ring">
+      <svg width={76} height={76} viewBox="0 0 76 76">
+        <circle className="progress-ring-track" cx={38} cy={38} r={radius} strokeWidth={stroke} fill="none" />
+        <circle
+          className="progress-ring-value"
+          cx={38}
+          cy={38}
+          r={radius}
+          strokeWidth={stroke}
+          fill="none"
+          strokeDasharray={circumference}
+          strokeDashoffset={offset}
+        />
+      </svg>
+      <div className="progress-ring-label">{Math.round(fraction * 100)}%</div>
+    </div>
+  )
+}
+
+function DayStrip({ blocks, nowMinutes }: { blocks: BlockInstanceWithCategory[]; nowMinutes: number }): React.JSX.Element | null {
+  if (blocks.length === 0) return null
+  const dayStart = Math.min(...blocks.map((b) => toMinutes(b.plannedStart)))
+  const dayEnd = Math.max(...blocks.map((b) => toMinutes(b.plannedEnd)))
+  const span = dayEnd - dayStart
+  if (span <= 0) return null
+  const nowPct = ((nowMinutes - dayStart) / span) * 100
+  const showNow = nowPct >= 0 && nowPct <= 100
+
+  return (
+    <>
+      <div className="day-strip">
+        {blocks.map((b) => {
+          const s = toMinutes(b.plannedStart)
+          const e = toMinutes(b.plannedEnd)
+          const left = ((s - dayStart) / span) * 100
+          const width = ((e - s) / span) * 100
+          return (
+            <div
+              key={b.id}
+              className="day-strip-segment"
+              title={`${b.label} (${to12Hour(b.plannedStart)} – ${to12Hour(b.plannedEnd)})`}
+              style={{ left: `${left}%`, width: `${width}%`, background: b.category.color }}
+            />
+          )
+        })}
+        {showNow && <div className="day-strip-now" style={{ left: `${nowPct}%` }} />}
+      </div>
+      <div className="day-strip-labels">
+        <span>{to12Hour(`${String(Math.floor(dayStart / 60)).padStart(2, '0')}:${String(dayStart % 60).padStart(2, '0')}`)}</span>
+        <span>{to12Hour(`${String(Math.floor(dayEnd / 60)).padStart(2, '0')}:${String(dayEnd % 60).padStart(2, '0')}`)}</span>
+      </div>
+    </>
+  )
+}
+
 export default function Timeline(): React.JSX.Element {
   const [today, setToday] = useState<TodayData | null>(null)
   const [now, setNow] = useState(new Date())
@@ -130,8 +198,7 @@ export default function Timeline(): React.JSX.Element {
 
   const setStatus = (blockId: number, status: BlockStatus): void => {
     api.updateBlockStatus(blockId, status).then((blocks) =>
-      setToday((prev) => (prev ? { ...prev, blocks } : prev)
-      )
+      setToday((prev) => (prev ? { ...prev, blocks } : prev))
     )
   }
 
@@ -146,21 +213,65 @@ export default function Timeline(): React.JSX.Element {
   if (!today) return <div className="empty-state">Loading today's schedule…</div>
 
   const nowMinutes = now.getHours() * 60 + now.getMinutes()
+  const doneCount = today.blocks.filter((b) => b.status === 'done').length
+  const fraction = today.blocks.length > 0 ? doneCount / today.blocks.length : 0
+
+  const activeBlock = today.blocks.find((b) => b.status === 'active')
+  const nextBlock = today.blocks
+    .filter((b) => b.status === 'pending' && toMinutes(b.plannedStart) >= nowMinutes)
+    .sort((a, b) => toMinutes(a.plannedStart) - toMinutes(b.plannedStart))[0]
+  const spotlightBlock = activeBlock ?? nextBlock
 
   return (
     <>
-      <div className="page-header">
-        <div>
-          <div className="page-title">{formatDate(now, 'EEEE, MMMM d')}</div>
-          <div className="page-subtitle">
-            <span className={`badge badge-accent`} style={{ marginRight: 8 }}>
-              {today.dayType === 'weekday' ? 'Weekday' : 'Weekend'}
-            </span>
-            {today.blocks.filter((b) => b.status === 'done').length} of {today.blocks.length} blocks done
+      <div className="card hero-card">
+        <div className="hero-top">
+          <div>
+            <div className="hero-greeting">{greeting(now.getHours())}</div>
+            <div className="hero-date">{formatDate(now, 'EEEE, MMMM d')}</div>
+            <div className="hero-clock">
+              {formatDate(now, 'h:mm:ss a')} &middot;{' '}
+              <span className={`badge badge-accent`}>{today.dayType === 'weekday' ? 'Weekday' : 'Weekend'}</span>
+              {'  '}
+              {doneCount} of {today.blocks.length} blocks done
+            </div>
+          </div>
+          <ProgressRing fraction={fraction} />
+        </div>
+        <DayStrip blocks={today.blocks} nowMinutes={nowMinutes} />
+      </div>
+
+      {spotlightBlock && (
+        <div
+          className="card spotlight-card"
+          style={{ '--cat-color': spotlightBlock.category.color } as React.CSSProperties}
+        >
+          <div className="spotlight-icon">
+            <CategoryIcon kind={spotlightBlock.category.kind} size={24} />
+          </div>
+          <div>
+            <div className="spotlight-eyebrow">{activeBlock ? 'Happening now' : 'Up next'}</div>
+            <div className="spotlight-label">{spotlightBlock.label}</div>
+            <div className="spotlight-meta">
+              {activeBlock
+                ? `Ends at ${to12Hour(spotlightBlock.plannedEnd)} • ${Math.max(0, toMinutes(spotlightBlock.plannedEnd) - nowMinutes)}m left`
+                : `Starts at ${to12Hour(spotlightBlock.plannedStart)} • in ${Math.max(0, toMinutes(spotlightBlock.plannedStart) - nowMinutes)}m`}
+            </div>
+          </div>
+          <div className="spotlight-actions">
+            {activeBlock && (
+              <button className="btn btn-primary" onClick={() => setStatus(spotlightBlock.id, 'done')}>
+                Mark done
+              </button>
+            )}
+            {!activeBlock && nextBlock && (
+              <button className="btn btn-primary" onClick={() => setStatus(spotlightBlock.id, 'active')}>
+                Start now
+              </button>
+            )}
           </div>
         </div>
-        <div className="clock">{formatDate(now, 'h:mm:ss a')}</div>
-      </div>
+      )}
 
       {today.blocks.length === 0 ? (
         <div className="empty-state">No blocks scheduled for today yet.</div>
@@ -189,8 +300,13 @@ export default function Timeline(): React.JSX.Element {
                       <div className="block-time">
                         {to12Hour(block.plannedStart)} – {to12Hour(block.plannedEnd)}
                       </div>
-                      <div className={`block-label${block.status === 'skipped' ? ' strike' : ''}`}>
-                        {block.label}
+                      <div className="block-label-row">
+                        <span className="cat-icon" style={{ color: block.category.color }}>
+                          <CategoryIcon kind={block.category.kind} />
+                        </span>
+                        <span className={`block-label${block.status === 'skipped' ? ' strike' : ''}`}>
+                          {block.label}
+                        </span>
                       </div>
                     </div>
                     {statusChip(block.status, block.category.color, liveLabel)}
