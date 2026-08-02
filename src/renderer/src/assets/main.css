@@ -1272,41 +1272,75 @@ body {
   flex-shrink: 0;
 }
 
-.city-row {
+.run-list {
   display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
+  flex-direction: column;
   margin-top: 14px;
+  max-height: 340px;
+  overflow-y: auto;
 }
-.city-chip {
-  font-size: 10px;
-  padding: 4px 9px;
-  border-radius: 20px;
-  border: 1px solid var(--border);
-  color: var(--text-tertiary);
+.run-list::-webkit-scrollbar {
+  width: 8px;
 }
-.city-chip.top {
-  border-color: var(--accent-dim);
-  color: var(--accent);
+.run-list::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
 }
-.exclude-note {
-  margin-top: 10px;
-  font-size: 10px;
-  color: var(--warning);
-  opacity: 0.85;
-}
-.source-row {
+.run-row {
   display: flex;
+  align-items: center;
   gap: 14px;
-  margin-top: 14px;
-  padding-top: 14px;
+  padding: 10px 0;
   border-top: 1px solid var(--border-soft);
-  font-size: 10.5px;
-  color: var(--text-tertiary);
-  flex-wrap: wrap;
 }
-.source-row b {
+.run-row:first-child {
+  border-top: none;
+  padding-top: 0;
+}
+.run-date {
+  width: 44px;
+  flex-shrink: 0;
+  text-align: center;
+}
+.run-date .dow {
+  font-size: 9px;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.run-date .dom {
+  font-size: 15px;
+  font-weight: 700;
   color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+.run-stats {
+  flex: 1;
+  min-width: 0;
+  font-size: 11.5px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+.run-stats b {
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+.run-stats .new-tag {
+  color: var(--warning);
+}
+.run-top {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.run-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
 }
 
 .plan-week {
@@ -1472,6 +1506,14 @@ body {
   align-items: center;
   justify-content: center;
   font-family: inherit;
+}
+.icon-btn svg {
+  width: 12px;
+  height: 12px;
+}
+.icon-btn.download:hover {
+  border-color: var(--accent);
+  color: var(--accent);
 }
 .icon-btn:hover {
   border-color: var(--warning);

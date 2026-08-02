@@ -213,65 +213,59 @@ function buildMockApi(): Window['api'] {
   const jobHuntPipeline: JobHuntPipelineSummary = {
     linked: true,
     scheduleLabel: 'Daily at 7:03 AM',
-    lastRunDate: dateStr,
-    scanned: 105,
-    strongFits: 7,
-    newSinceLastRun: 3,
     bestMatchEver: {
-      title: 'Fullstack Developer (Python + React)',
-      company: 'VGreen Technology Solutions',
-      location: 'Kochi',
-      datePosted: '17 hours ago',
-      score: 77,
-      reason: 'Matches: react, typescript, node.js',
+      title: 'Full Stack Engineer (Fintech Focused)',
+      company: '8byte',
+      location: 'Bengaluru',
+      datePosted: '2026-07-28',
+      score: 100,
+      reason: 'Matches: react, typescript, node.js, fintech domain',
       source: 'LinkedIn',
       url: '#',
-      runDate: dateStr
+      runDate: '2026-07-28'
     },
-    topMatches: [
+    runs: [
       {
-        title: 'Fullstack Developer (Python + React)',
-        company: 'VGreen Technology Solutions',
-        location: 'Kochi',
-        datePosted: '17 hours ago',
-        score: 77,
-        reason: 'Matches: react, typescript, node.js',
-        source: 'LinkedIn',
-        url: '#'
+        runId: 8,
+        runDate: '2026-08-01',
+        scanned: 105,
+        strongFits: 7,
+        newSinceLastRun: 102,
+        topMatch: { title: 'Senior Python Full Stack Lead', company: 'Innova Solutions', score: 77 }
       },
       {
-        title: 'Senior Full-Stack Node.js Developer',
-        company: 'BEO Software',
-        location: 'Kochi',
-        datePosted: '2 days ago',
-        score: 71,
-        reason: 'Matches: javascript, node.js, react, typescript',
-        source: 'Indeed',
-        url: '#'
+        runId: 7,
+        runDate: '2026-07-31',
+        scanned: 93,
+        strongFits: 5,
+        newSinceLastRun: 8,
+        topMatch: { title: 'Tech Lead, Full Stack', company: 'CGI', score: 71 }
       },
       {
-        title: 'Full Stack Developer',
-        company: 'Nerdience Technology',
-        location: 'Kochi',
-        datePosted: '2 days ago',
-        score: 70,
-        reason: 'Matches: angular, next.js, node.js, react',
-        source: 'Indeed',
-        url: '#'
+        runId: 6,
+        runDate: '2026-07-30',
+        scanned: 88,
+        strongFits: 6,
+        newSinceLastRun: 15,
+        topMatch: { title: 'Full Stack AI Developer', company: 'Composite Structures', score: 74 }
+      },
+      {
+        runId: 5,
+        runDate: '2026-07-29',
+        scanned: 74,
+        strongFits: 4,
+        newSinceLastRun: 3,
+        topMatch: { title: 'Backend Engineer', company: 'Zoho', score: 68 }
+      },
+      {
+        runId: 4,
+        runDate: '2026-07-28',
+        scanned: 81,
+        strongFits: 9,
+        newSinceLastRun: 20,
+        topMatch: { title: 'Full Stack Engineer (Fintech Focused)', company: '8byte', score: 100 }
       }
-    ],
-    cities: [
-      { name: 'Bengaluru', count: 64 },
-      { name: 'Chennai', count: 32 },
-      { name: 'Kochi', count: 8 },
-      { name: 'Thiruvananthapuram', count: 1 }
-    ],
-    sources: [
-      { name: 'Naukri', count: 45 },
-      { name: 'LinkedIn', count: 40 },
-      { name: 'Indeed', count: 20 }
-    ],
-    excludeNote: '▲ .NET roles auto-filtered'
+    ]
   }
 
   let prepPlan: PrepPlan = {

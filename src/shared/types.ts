@@ -148,18 +148,20 @@ export interface JobListing {
   url: string
 }
 
-export interface JobHuntPipelineSummary {
-  linked: boolean
-  scheduleLabel: string | null
-  lastRunDate: string | null
+export interface JobHuntRunSummary {
+  runId: number
+  runDate: string
   scanned: number
   strongFits: number
   newSinceLastRun: number
-  topMatches: JobListing[]
+  topMatch: { title: string; company: string; score: number } | null
+}
+
+export interface JobHuntPipelineSummary {
+  linked: boolean
+  scheduleLabel: string | null
   bestMatchEver: (JobListing & { runDate: string }) | null
-  cities: { name: string; count: number }[]
-  sources: { name: string; count: number }[]
-  excludeNote: string | null
+  runs: JobHuntRunSummary[]
 }
 
 export interface PrepWeek {

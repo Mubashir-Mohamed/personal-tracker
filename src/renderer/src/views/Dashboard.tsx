@@ -58,6 +58,23 @@ function BootBar(): React.JSX.Element {
   )
 }
 
+function DownloadIcon(): React.JSX.Element {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <path d="M12 4v11m0 0 4-4m-4 4-4-4" />
+      <path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3" />
+    </svg>
+  )
+}
+
+function formatRunDate(dateStr: string): { dow: string; dom: string } {
+  const d = new Date(`${dateStr}T00:00:00`)
+  return {
+    dow: d.toLocaleDateString(undefined, { weekday: 'short' }),
+    dom: d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+  }
+}
+
 function JobHuntCard(): React.JSX.Element {
   const [summary, setSummary] = useState<JobHuntPipelineSummary | null>(null)
 
@@ -70,6 +87,10 @@ function JobHuntCard(): React.JSX.Element {
     return () => clearInterval(interval)
   }, [])
 
+  const openRun = (runId: number): void => {
+    api.openRoutineRunFile(runId)
+  }
+
   if (!summary) return <div className="card card-pad db-col-7">Loading job hunt pipeline…</div>
 
   if (!summary.linked) {
@@ -77,7 +98,7 @@ function JobHuntCard(): React.JSX.Element {
       <div className="card card-pad db-col-7">
         <div className="term-head">
           <div className="term-title">
-            ~/job-hunt<span className="term-sep"> %</span> pipeline.sh --status
+            ~/job-hunt<span className="term-sep"> %</span> pipeline.sh --history
           </div>
         </div>
         <div className="task-empty">
@@ -92,24 +113,9 @@ function JobHuntCard(): React.JSX.Element {
     <div className="card card-pad db-col-7">
       <div className="term-head">
         <div className="term-title">
-          ~/job-hunt<span className="term-sep"> %</span> pipeline.sh --status
+          ~/job-hunt<span className="term-sep"> %</span> pipeline.sh --history
         </div>
         {summary.scheduleLabel && <div className="term-tag">Apify · {summary.scheduleLabel}</div>}
-      </div>
-
-      <div className="stat-row">
-        <div className="stat">
-          <div className="num">{summary.scanned}</div>
-          <div className="lbl">scanned</div>
-        </div>
-        <div className="stat">
-          <div className="num accent">{summary.strongFits}</div>
-          <div className="lbl">strong fits</div>
-        </div>
-        <div className="stat">
-          <div className="num warn">{summary.newSinceLastRun}</div>
-          <div className="lbl">new since last run</div>
-        </div>
       </div>
 
       {summary.bestMatchEver && (
@@ -132,38 +138,39 @@ function JobHuntCard(): React.JSX.Element {
         </div>
       )}
 
-      {summary.topMatches.map((m) => (
-        <div className="match" key={m.url || `${m.title}-${m.company}`}>
-          <div className="co">
-            {m.title} <span className="role">
-              · {m.company} · {m.location}
-            </span>
-          </div>
-          <div className="bar">
-            <div className="bar-fill" style={{ width: `${Math.min(100, m.score)}%` }} />
-          </div>
-          <div className="score">{m.score}%</div>
-        </div>
-      ))}
-
-      {summary.cities.length > 0 && (
-        <div className="city-row">
-          {summary.cities.map((c, i) => (
-            <span className={`city-chip${i === 0 ? ' top' : ''}`} key={c.name}>
-              {c.name}
-            </span>
-          ))}
-        </div>
-      )}
-      {summary.excludeNote && <div className="exclude-note">{summary.excludeNote}</div>}
-
-      {summary.sources.length > 0 && (
-        <div className="source-row">
-          {summary.sources.map((s) => (
-            <span key={s.name}>
-              <b>{s.name}</b> {s.count}
-            </span>
-          ))}
+      {summary.runs.length === 0 ? (
+        <div className="task-empty">No runs archived yet — check back after the next run.</div>
+      ) : (
+        <div className="run-list">
+          {summary.runs.map((run) => {
+            const { dow, dom } = formatRunDate(run.runDate)
+            return (
+              <div className="run-row" key={run.runId}>
+                <div className="run-date">
+                  <div className="dow">{dow}</div>
+                  <div className="dom">{dom}</div>
+                </div>
+                <div className="run-stats">
+                  <b>{run.scanned}</b> scanned · <b>{run.strongFits}</b> strong fits ·{' '}
+                  <span className="new-tag">+{run.newSinceLastRun} new</span>
+                  {run.topMatch && (
+                    <div className="run-top">
+                      top: {run.topMatch.score}% · {run.topMatch.title} · {run.topMatch.company}
+                    </div>
+                  )}
+                </div>
+                <div className="run-actions">
+                  <button
+                    className="icon-btn download"
+                    title="Open original report"
+                    onClick={() => openRun(run.runId)}
+                  >
+                    <DownloadIcon />
+                  </button>
+                </div>
+              </div>
+            )
+          })}
         </div>
       )}
     </div>
