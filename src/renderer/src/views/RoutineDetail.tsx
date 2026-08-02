@@ -1,41 +1,31 @@
 import { useEffect, useState } from 'react'
 import { format, parseISO } from 'date-fns'
 import { api } from '../api'
+import { findHeaderRowIndex, nonEmptyDistinctValues } from '../../../shared/sheetUtils'
 import type { ParsedSheet, RoutineRun, RoutineRunDetail as RoutineRunDetailType, RoutineWithLatestRun } from '../api'
 
 function isUrl(text: string): boolean {
   return /^https?:\/\//i.test(text.trim())
 }
 
-function nonEmptyDistinctValues(row: string[]): string[] {
-  return [...new Set(row.map((cell) => cell.trim()).filter((cell) => cell.length > 0))]
-}
+function SheetView({ sheet, runId }: { sheet: ParsedSheet; runId: number }): React.JSX.Element {
+  const [resumeError, setResumeError] = useState<string | null>(null)
 
-/** Heuristic: within the first ~10 rows, the row with the most *distinct* non-empty cells is
- *  the header; anything above it (title/subtitle rows in generated reports) renders as a banner.
- *  Distinct (not just non-empty) matters because merged title/subtitle cells come back from
- *  ExcelJS with the same value repeated across every column in the merge range. */
-function findHeaderRowIndex(rows: string[][]): number {
-  let bestIndex = 0
-  let bestCount = -1
-  const searchLimit = Math.min(rows.length, 10)
-  for (let i = 0; i < searchLimit; i++) {
-    const count = nonEmptyDistinctValues(rows[i]).length
-    if (count > bestCount) {
-      bestCount = count
-      bestIndex = i
-    }
-  }
-  return bestIndex
-}
-
-function SheetView({ sheet }: { sheet: ParsedSheet }): React.JSX.Element {
   if (sheet.rows.length === 0) return <div className="empty-state">This sheet is empty.</div>
 
   const headerIndex = findHeaderRowIndex(sheet.rows)
   const bannerRows = sheet.rows.slice(0, headerIndex)
   const headerRow = sheet.rows[headerIndex]
   const dataRows = sheet.rows.slice(headerIndex + 1)
+  const resumeColIndex = headerRow.findIndex((h) => /tailored resume/i.test(h.trim()))
+
+  const openResume = async (filename: string): Promise<void> => {
+    const result = await api.openRoutineRunSidecarFile(runId, filename)
+    if (!result.ok) {
+      setResumeError(result.error ?? "Couldn't open that file.")
+      setTimeout(() => setResumeError(null), 3000)
+    }
+  }
 
   return (
     <div>
@@ -48,6 +38,7 @@ function SheetView({ sheet }: { sheet: ParsedSheet }): React.JSX.Element {
           </div>
         )
       })}
+      {resumeError && <div className="report-banner" style={{ color: 'var(--danger)' }}>{resumeError}</div>}
       <div className="data-table-wrap">
         <table className="data-table">
           <thead>
@@ -60,17 +51,32 @@ function SheetView({ sheet }: { sheet: ParsedSheet }): React.JSX.Element {
           <tbody>
             {dataRows.map((row, i) => (
               <tr key={i}>
-                {row.map((cell, j) =>
-                  isUrl(cell) ? (
-                    <td key={j}>
-                      <a href={cell} target="_blank" rel="noreferrer">
-                        Open
-                      </a>
-                    </td>
-                  ) : (
-                    <td key={j}>{cell}</td>
-                  )
-                )}
+                {row.map((cell, j) => {
+                  if (j === resumeColIndex) {
+                    const filename = cell.trim()
+                    return (
+                      <td key={j}>
+                        {filename ? (
+                          <button className="btn btn-ghost" style={{ padding: '3px 10px', fontSize: 11.5 }} onClick={() => openResume(filename)}>
+                            Open resume
+                          </button>
+                        ) : (
+                          <span style={{ color: 'var(--text-tertiary)' }}>—</span>
+                        )}
+                      </td>
+                    )
+                  }
+                  if (isUrl(cell)) {
+                    return (
+                      <td key={j}>
+                        <a href={cell} target="_blank" rel="noreferrer">
+                          Open
+                        </a>
+                      </td>
+                    )
+                  }
+                  return <td key={j}>{cell}</td>
+                })}
               </tr>
             ))}
           </tbody>
@@ -170,7 +176,7 @@ export default function RoutineDetail({
                     ))}
                   </div>
                 )}
-                <SheetView sheet={detail.parsed.sheets[activeSheet]} />
+                <SheetView sheet={detail.parsed.sheets[activeSheet]} runId={detail.id} />
               </div>
             ) : (
               <div className="empty-state">Loading…</div>

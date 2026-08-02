@@ -54,7 +54,9 @@ const api = {
     ipcRenderer.invoke('link-routine-output', routineId, watchPath, scheduleLabel),
   checkRoutinesNow: (): Promise<RoutineWithLatestRun[]> => ipcRenderer.invoke('check-routines-now'),
   pickWatchFile: (): Promise<string | null> => ipcRenderer.invoke('pick-watch-file'),
-  openRoutineRunFile: (runId: number): Promise<void> => ipcRenderer.invoke('open-routine-run-file', runId)
+  openRoutineRunFile: (runId: number): Promise<void> => ipcRenderer.invoke('open-routine-run-file', runId),
+  openRoutineRunSidecarFile: (runId: number, filename: string): Promise<{ ok: boolean; error?: string }> =>
+    ipcRenderer.invoke('open-routine-run-sidecar-file', runId, filename)
 }
 
 export type PersonalTrackerApi = typeof api

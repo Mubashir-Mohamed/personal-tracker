@@ -1,4 +1,6 @@
 import { ipcMain, dialog, shell, BrowserWindow } from 'electron'
+import { existsSync } from 'fs'
+import { dirname, join, basename } from 'path'
 import {
   getBlocksForDate,
   getCategories,
@@ -109,5 +111,17 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('open-routine-run-file', (_e, runId: number) => {
     const run = getRoutineRunDetail(runId)
     if (run) shell.openPath(run.archivedPath)
+  })
+
+  ipcMain.handle('open-routine-run-sidecar-file', (_e, runId: number, filename: string) => {
+    const run = getRoutineRunDetail(runId)
+    if (!run) return { ok: false, error: 'Run not found' }
+
+    const target = join(dirname(run.archivedPath), basename(filename))
+    if (!existsSync(target)) {
+      return { ok: false, error: "That file wasn't saved with this run's snapshot" }
+    }
+    shell.openPath(target)
+    return { ok: true }
   })
 }

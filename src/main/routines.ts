@@ -1,8 +1,9 @@
 import { app } from 'electron'
 import { existsSync, mkdirSync, copyFileSync, statSync, readdirSync, readFileSync } from 'fs'
 import { homedir } from 'os'
-import { join, extname } from 'path'
+import { join, basename, dirname } from 'path'
 import ExcelJS from 'exceljs'
+import { findHeaderRowIndex } from '../shared/sheetUtils'
 import type { ParsedWorkbook } from '../shared/types'
 import { getRoutines, upsertRoutineFromDisk, getLatestRunSourceMtime, upsertRoutineRun } from './routinesDb'
 
@@ -62,6 +63,35 @@ async function parseWorkbook(filePath: string): Promise<ParsedWorkbook> {
   return { sheets }
 }
 
+/** Some routines generate per-row sidecar files (e.g. a tailored resume PDF for a job
+ *  listing) referenced by filename in a "Tailored Resume" column. Copies any that exist
+ *  next to the watched file into the same per-run archive folder as the main workbook. */
+function archiveSidecarFiles(parsed: ParsedWorkbook, sourceDir: string, archiveDir: string): void {
+  for (const sheet of parsed.sheets) {
+    if (sheet.rows.length === 0) continue
+
+    const headerIndex = findHeaderRowIndex(sheet.rows)
+    const headerRow = sheet.rows[headerIndex]
+    const colIndex = headerRow.findIndex((h) => /tailored resume/i.test(h.trim()))
+    if (colIndex === -1) continue
+
+    for (const row of sheet.rows.slice(headerIndex + 1)) {
+      const filename = row[colIndex]?.trim()
+      if (!filename) continue
+
+      const sourcePath = join(sourceDir, basename(filename))
+      const destPath = join(archiveDir, basename(filename))
+      if (existsSync(destPath) || !existsSync(sourcePath)) continue
+
+      try {
+        copyFileSync(sourcePath, destPath)
+      } catch (err) {
+        console.error(`Failed to archive sidecar file "${filename}"`, err)
+      }
+    }
+  }
+}
+
 /** For every routine with a watch_path set, checks if the output file changed since the
  *  last recorded run and, if so, archives + parses a dated snapshot. */
 export async function checkRoutineRuns(): Promise<void> {
@@ -76,14 +106,14 @@ export async function checkRoutineRuns(): Promise<void> {
 
     const now = new Date()
     const runDate = now.toISOString().slice(0, 10)
-    const ext = extname(routine.watchPath)
-    const archiveDir = join(app.getPath('userData'), 'routine-archives', String(routine.id))
+    const archiveDir = join(app.getPath('userData'), 'routine-archives', String(routine.id), runDate)
     mkdirSync(archiveDir, { recursive: true })
-    const archivedPath = join(archiveDir, `${runDate}${ext}`)
+    const archivedPath = join(archiveDir, basename(routine.watchPath))
 
     try {
       copyFileSync(routine.watchPath, archivedPath)
       const parsed = await parseWorkbook(archivedPath)
+      archiveSidecarFiles(parsed, dirname(routine.watchPath), archiveDir)
       upsertRoutineRun({
         routineId: routine.id,
         runDate,

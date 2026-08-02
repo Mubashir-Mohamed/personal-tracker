@@ -142,7 +142,17 @@ function buildMockApi(): Window['api'] {
                 ['Daily Job Openings Report — Last 24 Hours'],
                 [`Run date: ${run.runDate}  |  Priority locations: Kochi > Thiruvananthapuram`],
                 [],
-                ['Title', 'Company', 'Location', 'Date Posted', 'Source', 'Match Score /100', 'Reason', 'Direct Link'],
+                [
+                  'Title',
+                  'Company',
+                  'Location',
+                  'Date Posted',
+                  'Source',
+                  'Match Score /100',
+                  'Reason',
+                  'Direct Link',
+                  'Tailored Resume'
+                ],
                 [
                   'Senior Software Engineer',
                   'NOV',
@@ -151,7 +161,8 @@ function buildMockApi(): Window['api'] {
                   'LinkedIn',
                   '68',
                   'Generic senior SWE title at an established engineering company.',
-                  'https://in.linkedin.com/jobs/view/example'
+                  'https://in.linkedin.com/jobs/view/example',
+                  ''
                 ],
                 [
                   'Backend Engineer',
@@ -159,9 +170,10 @@ function buildMockApi(): Window['api'] {
                   'Chennai',
                   run.runDate,
                   'Naukri',
-                  '74',
+                  '85',
                   'Strong stack overlap.',
-                  'https://www.naukri.com/job-listings/example'
+                  'https://www.naukri.com/job-listings/example',
+                  'Zoho_BackendEngineer_resume.pdf'
                 ]
               ]
             },
@@ -234,7 +246,9 @@ function buildMockApi(): Window['api'] {
     },
     checkRoutinesNow: async () => routines,
     pickWatchFile: async () => '/Users/mock/picked-file.xlsx',
-    openRoutineRunFile: async () => {}
+    openRoutineRunFile: async () => {},
+    openRoutineRunSidecarFile: async (_runId, filename) =>
+      filename.endsWith('.pdf') ? { ok: true } : { ok: false, error: "That file wasn't saved with this run's snapshot" }
   }
 }
 
