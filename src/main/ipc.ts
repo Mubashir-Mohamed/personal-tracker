@@ -16,17 +16,18 @@ import { getWeekDayStats, getStreakForKind } from './stats'
 import { applyAutoLaunch } from './autoLaunch'
 import { getRoutines, getRoutineRuns, getRoutineRunDetail, linkRoutineOutput } from './routinesDb'
 import { checkRoutinesNow } from './routines'
-import type { AppSettings, BlockStatus, DayType, JobHuntLogEntry } from '../shared/types'
+import type { AppSettings, BlockStatus, DayType, JobHuntLogEntry, TodaySnapshot } from '../shared/types'
 
 export function registerIpcHandlers(): void {
-  ipcMain.handle('get-today', () => {
+  ipcMain.handle('get-today', (): TodaySnapshot => {
     const now = new Date()
     ensureBlocksForDate(now)
     const date = todayString(now)
     return {
       date,
       dayType: dayTypeFor(now),
-      blocks: getBlocksForDate(date)
+      blocks: getBlocksForDate(date),
+      enabled: getSetting('timeTrackerEnabled')
     }
   })
 
@@ -67,7 +68,8 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle('get-settings', (): AppSettings => ({
     notificationLeadMinutes: getSetting('notificationLeadMinutes'),
-    autoLaunch: getSetting('autoLaunch')
+    autoLaunch: getSetting('autoLaunch'),
+    timeTrackerEnabled: getSetting('timeTrackerEnabled')
   }))
 
   ipcMain.handle('set-setting', async (_e, key: keyof AppSettings, value: string | number | boolean) => {

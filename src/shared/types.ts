@@ -38,6 +38,13 @@ export interface BlockInstanceWithCategory extends BlockInstance {
   category: Category
 }
 
+export interface TodaySnapshot {
+  date: string
+  dayType: DayType
+  blocks: BlockInstanceWithCategory[]
+  enabled: boolean
+}
+
 export interface JobHuntLogEntry {
   date: string
   applicationsCount: number
@@ -48,6 +55,7 @@ export interface JobHuntLogEntry {
 export interface AppSettings {
   notificationLeadMinutes: number
   autoLaunch: boolean
+  timeTrackerEnabled: boolean
 }
 
 export interface CategoryStat {

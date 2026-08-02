@@ -1,6 +1,6 @@
 import { Tray, Menu, nativeImage, app } from 'electron'
 import icon from '../../resources/icon.png?asset'
-import { getBlocksForDate } from './db'
+import { getBlocksForDate, getSetting } from './db'
 import { todayString } from './scheduler'
 
 let tray: Tray | null = null
@@ -31,6 +31,20 @@ export function createTray(openDashboard: () => void): Tray {
   tray.setToolTip('Personal Tracker')
 
   const refresh = (): void => {
+    if (!getSetting('timeTrackerEnabled')) {
+      tray?.setToolTip('Personal Tracker\nTime tracker is off')
+      tray?.setContextMenu(
+        Menu.buildFromTemplate([
+          { label: 'Time tracker is off', enabled: false },
+          { type: 'separator' },
+          { label: 'Open Dashboard', click: openDashboard },
+          { type: 'separator' },
+          { label: 'Quit Personal Tracker', click: () => app.quit() }
+        ])
+      )
+      return
+    }
+
     const { current, next } = currentAndNext()
     tray?.setToolTip(`Personal Tracker\nNow: ${current ?? 'Free time'}${next ? `\nNext: ${next}` : ''}`)
     tray?.setContextMenu(

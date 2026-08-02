@@ -35,6 +35,8 @@ function parseTimeToday(hhmm: string, base: Date): Date {
 }
 
 function runTick(): void {
+  if (!getSetting('timeTrackerEnabled')) return
+
   const now = new Date()
   const dateStr = todayString(now)
   const leadMinutes = getSetting('notificationLeadMinutes')

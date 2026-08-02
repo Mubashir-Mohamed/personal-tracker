@@ -2,13 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { format as formatDate } from 'date-fns'
 import { api } from '../api'
 import { CategoryIcon } from '../icons'
-import type { BlockInstanceWithCategory, BlockStatus, DayType, JobHuntLogEntry } from '../api'
-
-interface TodayData {
-  date: string
-  dayType: DayType
-  blocks: BlockInstanceWithCategory[]
-}
+import type { BlockInstanceWithCategory, BlockStatus, JobHuntLogEntry, TodaySnapshot } from '../api'
 
 function toMinutes(t: string): number {
   const [h, m] = t.split(':').map(Number)
@@ -177,7 +171,7 @@ function DayStrip({ blocks, nowMinutes }: { blocks: BlockInstanceWithCategory[];
 }
 
 export default function Timeline(): React.JSX.Element {
-  const [today, setToday] = useState<TodayData | null>(null)
+  const [today, setToday] = useState<TodaySnapshot | null>(null)
   const [now, setNow] = useState(new Date())
 
   const refresh = useCallback(() => {
@@ -224,6 +218,11 @@ export default function Timeline(): React.JSX.Element {
 
   return (
     <>
+      {!today.enabled && (
+        <div className="disabled-banner">
+          Time tracking is turned off — no new blocks or notifications until you turn it back on in Settings.
+        </div>
+      )}
       <div className="card hero-card">
         <div className="hero-top">
           <div>

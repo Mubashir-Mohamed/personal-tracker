@@ -65,7 +65,7 @@ function buildMockApi(): Window['api'] {
   })
 
   let jobHuntLog: JobHuntLogEntry = { date: dateStr, applicationsCount: 2, companies: ['Acme', 'Globex'], notes: '' }
-  const settings: AppSettings = { notificationLeadMinutes: 10, autoLaunch: true }
+  const settings: AppSettings = { notificationLeadMinutes: 10, autoLaunch: true, timeTrackerEnabled: true }
 
   const weekStats: WeekStats = {
     days: [-3, -2, -1, 0].map((offset) => {
@@ -180,7 +180,12 @@ function buildMockApi(): Window['api'] {
   )
 
   return {
-    getToday: async () => ({ date: dateStr, dayType: 'weekday', blocks }),
+    getToday: async () => ({
+      date: dateStr,
+      dayType: 'weekday' as DayType,
+      blocks,
+      enabled: settings.timeTrackerEnabled
+    }),
     getCategories: async () => categories,
     updateBlockStatus: async (blockId, status) => {
       const b = blocks.find((x) => x.id === blockId)
@@ -253,5 +258,6 @@ export type {
   RoutineWithLatestRun,
   RunStatus,
   ScheduleRule,
+  TodaySnapshot,
   WeekStats
 } from '../../shared/types'

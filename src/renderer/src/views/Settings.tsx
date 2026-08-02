@@ -101,6 +101,27 @@ export default function Settings(): React.JSX.Element {
         </div>
       </div>
 
+      {settings && (
+        <div className="card card-pad settings-section">
+          <div className="section-title">Time Management</div>
+          <div className="settings-field-row">
+            <span>Track my daily routine</span>
+            <button
+              className={`toggle${settings.timeTrackerEnabled ? ' on' : ''}`}
+              onClick={() => updateSetting('timeTrackerEnabled', !settings.timeTrackerEnabled)}
+            >
+              <span className="toggle-knob" />
+            </button>
+          </div>
+          {!settings.timeTrackerEnabled && (
+            <div className="block-meta" style={{ marginTop: 6 }}>
+              Turned off — no new schedule blocks will be created and no notifications will fire until you turn
+              this back on.
+            </div>
+          )}
+        </div>
+      )}
+
       {categories.length > 0 && (
         <>
           <RuleEditor dayType="weekday" categories={categories} />

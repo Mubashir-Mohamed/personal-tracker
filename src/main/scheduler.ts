@@ -1,6 +1,6 @@
 import { format, isWeekend } from 'date-fns'
 import type { DayType } from '../shared/types'
-import { getRulesForDayType, insertBlockInstance, getBlocksForDate } from './db'
+import { getRulesForDayType, insertBlockInstance, getBlocksForDate, getSetting } from './db'
 
 export function dayTypeFor(date: Date): DayType {
   return isWeekend(date) ? 'weekend' : 'weekday'
@@ -10,8 +10,11 @@ export function todayString(date = new Date()): string {
   return format(date, 'yyyy-MM-dd')
 }
 
-/** Materializes block_instances for `date` from schedule_rules if not already generated. Idempotent. */
+/** Materializes block_instances for `date` from schedule_rules if not already generated. Idempotent.
+ *  No-op while the time tracker is disabled in Settings. */
 export function ensureBlocksForDate(date: Date): void {
+  if (!getSetting('timeTrackerEnabled')) return
+
   const dateStr = todayString(date)
   const existing = getBlocksForDate(dateStr)
   if (existing.length > 0) return

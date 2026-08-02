@@ -134,6 +134,7 @@ function seedDefaults(): void {
 
   db.prepare("INSERT INTO settings (key, value) VALUES ('notificationLeadMinutes', '10')").run()
   db.prepare("INSERT INTO settings (key, value) VALUES ('autoLaunch', 'true')").run()
+  db.prepare("INSERT INTO settings (key, value) VALUES ('timeTrackerEnabled', 'true')").run()
 }
 
 function rowToCategory(row: any): Category {
@@ -285,6 +286,7 @@ export function getSetting<T extends keyof AppSettings>(key: T): AppSettings[T] 
   const raw = row?.value
   if (key === 'notificationLeadMinutes') return Number(raw ?? 10) as AppSettings[T]
   if (key === 'autoLaunch') return ((raw ?? 'true') === 'true') as AppSettings[T]
+  if (key === 'timeTrackerEnabled') return ((raw ?? 'true') === 'true') as AppSettings[T]
   throw new Error(`Unknown setting key: ${String(key)}`)
 }
 

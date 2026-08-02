@@ -11,12 +11,12 @@ import type {
   RoutineRunDetail,
   RoutineWithLatestRun,
   ScheduleRule,
+  TodaySnapshot,
   WeekStats
 } from '../shared/types'
 
 const api = {
-  getToday: (): Promise<{ date: string; dayType: DayType; blocks: BlockInstanceWithCategory[] }> =>
-    ipcRenderer.invoke('get-today'),
+  getToday: (): Promise<TodaySnapshot> => ipcRenderer.invoke('get-today'),
   getCategories: (): Promise<Category[]> => ipcRenderer.invoke('get-categories'),
   updateBlockStatus: (blockId: number, status: BlockStatus): Promise<BlockInstanceWithCategory[]> =>
     ipcRenderer.invoke('update-block-status', blockId, status),
