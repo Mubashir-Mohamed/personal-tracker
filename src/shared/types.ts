@@ -120,3 +120,71 @@ export interface RoutineRun {
 export interface RoutineRunDetail extends RoutineRun {
   parsed: ParsedWorkbook | null
 }
+
+// ---- Dashboard (landing page) ----
+
+export interface Todo {
+  id: number
+  text: string
+  done: boolean
+  sortOrder: number
+}
+
+export interface QuickLink {
+  id: number
+  label: string
+  url: string
+  sortOrder: number
+}
+
+export interface JobListing {
+  title: string
+  company: string
+  location: string
+  datePosted: string
+  score: number
+  reason: string
+  source: string
+  url: string
+}
+
+export interface JobHuntPipelineSummary {
+  linked: boolean
+  scheduleLabel: string | null
+  lastRunDate: string | null
+  scanned: number
+  strongFits: number
+  newSinceLastRun: number
+  topMatches: JobListing[]
+  bestMatchEver: (JobListing & { runDate: string }) | null
+  cities: { name: string; count: number }[]
+  sources: { name: string; count: number }[]
+  excludeNote: string | null
+}
+
+export interface PrepWeek {
+  id: number
+  weekNumber: number
+  title: string
+  description: string
+  startDate: string // 'YYYY-MM-DD'
+  endDate: string // 'YYYY-MM-DD'
+  current: boolean
+}
+
+export interface PrepPlan {
+  weeks: PrepWeek[]
+  studyStreakDays: number
+  studiedToday: boolean
+}
+
+export interface WeatherSnapshot {
+  locationLabel: string
+  tempC: number
+  condition: string
+  isDay: boolean
+  highC: number
+  lowC: number
+  precipChancePct: number
+  fetchedAt: string
+}

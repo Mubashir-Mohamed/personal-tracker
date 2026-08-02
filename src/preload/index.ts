@@ -7,11 +7,16 @@ import type {
   Category,
   DayType,
   JobHuntLogEntry,
+  JobHuntPipelineSummary,
+  PrepPlan,
+  QuickLink,
   RoutineRun,
   RoutineRunDetail,
   RoutineWithLatestRun,
   ScheduleRule,
+  Todo,
   TodaySnapshot,
+  WeatherSnapshot,
   WeekStats
 } from '../shared/types'
 
@@ -56,7 +61,26 @@ const api = {
   pickWatchFile: (): Promise<string | null> => ipcRenderer.invoke('pick-watch-file'),
   openRoutineRunFile: (runId: number): Promise<void> => ipcRenderer.invoke('open-routine-run-file', runId),
   openRoutineRunSidecarFile: (runId: number, filename: string): Promise<{ ok: boolean; error?: string }> =>
-    ipcRenderer.invoke('open-routine-run-sidecar-file', runId, filename)
+    ipcRenderer.invoke('open-routine-run-sidecar-file', runId, filename),
+
+  getTodos: (): Promise<Todo[]> => ipcRenderer.invoke('get-todos'),
+  addTodo: (text: string): Promise<Todo[]> => ipcRenderer.invoke('add-todo', text),
+  toggleTodo: (id: number): Promise<Todo[]> => ipcRenderer.invoke('toggle-todo', id),
+  deleteTodo: (id: number): Promise<Todo[]> => ipcRenderer.invoke('delete-todo', id),
+
+  getLinks: (): Promise<QuickLink[]> => ipcRenderer.invoke('get-links'),
+  addLink: (label: string, url: string): Promise<QuickLink[]> =>
+    ipcRenderer.invoke('add-link', label, url),
+  deleteLink: (id: number): Promise<QuickLink[]> => ipcRenderer.invoke('delete-link', id),
+  openExternal: (url: string): Promise<void> => ipcRenderer.invoke('open-external', url),
+
+  getJobHuntPipeline: (): Promise<JobHuntPipelineSummary> =>
+    ipcRenderer.invoke('get-job-hunt-pipeline'),
+
+  getPrepPlan: (): Promise<PrepPlan> => ipcRenderer.invoke('get-prep-plan'),
+  markStudiedToday: (): Promise<PrepPlan> => ipcRenderer.invoke('mark-studied-today'),
+
+  getWeather: (): Promise<WeatherSnapshot | null> => ipcRenderer.invoke('get-weather')
 }
 
 export type PersonalTrackerApi = typeof api

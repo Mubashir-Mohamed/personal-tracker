@@ -1,6 +1,7 @@
 import Database from 'better-sqlite3'
 import { app } from 'electron'
 import { join } from 'path'
+import { format, addDays } from 'date-fns'
 import type {
   AppSettings,
   BlockInstance,
@@ -9,7 +10,10 @@ import type {
   Category,
   DayType,
   JobHuntLogEntry,
-  ScheduleRule
+  PrepWeek,
+  QuickLink,
+  ScheduleRule,
+  Todo
 } from '../shared/types'
 
 let db: Database.Database
@@ -91,9 +95,33 @@ export function initDb(): Database.Database {
       parsed_json TEXT,
       UNIQUE(routine_id, run_date)
     );
+
+    CREATE TABLE IF NOT EXISTS todos (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      text TEXT NOT NULL,
+      done INTEGER NOT NULL DEFAULT 0,
+      sort_order INTEGER NOT NULL DEFAULT 0
+    );
+
+    CREATE TABLE IF NOT EXISTS links (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      label TEXT NOT NULL,
+      url TEXT NOT NULL,
+      sort_order INTEGER NOT NULL DEFAULT 0
+    );
+
+    CREATE TABLE IF NOT EXISTS prep_weeks (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      week_number INTEGER NOT NULL,
+      title TEXT NOT NULL,
+      description TEXT NOT NULL,
+      start_date TEXT NOT NULL,
+      end_date TEXT NOT NULL
+    );
   `)
 
   seedDefaults()
+  seedDashboardDefaults()
 
   return db
 }
@@ -135,6 +163,80 @@ function seedDefaults(): void {
   db.prepare("INSERT INTO settings (key, value) VALUES ('notificationLeadMinutes', '10')").run()
   db.prepare("INSERT INTO settings (key, value) VALUES ('autoLaunch', 'true')").run()
   db.prepare("INSERT INTO settings (key, value) VALUES ('timeTrackerEnabled', 'true')").run()
+}
+
+function seedDashboardDefaults(): void {
+  const todoCount = db.prepare('SELECT COUNT(*) as n FROM todos').get() as { n: number }
+  if (todoCount.n === 0) {
+    const insert = db.prepare(
+      'INSERT INTO todos (text, done, sort_order) VALUES (@text, @done, @sortOrder)'
+    )
+    ;[
+      { text: 'Review daily job match report', done: 1, sortOrder: 0 },
+      { text: 'Study: RSC & App Router — 1.5h', done: 0, sortOrder: 1 },
+      { text: 'Update resume with latest project', done: 0, sortOrder: 2 }
+    ].forEach((t) => insert.run(t))
+  }
+
+  const linkCount = db.prepare('SELECT COUNT(*) as n FROM links').get() as { n: number }
+  if (linkCount.n === 0) {
+    const insert = db.prepare(
+      'INSERT INTO links (label, url, sort_order) VALUES (@label, @url, @sortOrder)'
+    )
+    ;[
+      { label: 'Portfolio', url: '#', sortOrder: 0 },
+      { label: 'Resume PDF', url: '#', sortOrder: 1 },
+      { label: 'Naukri Profile', url: '#', sortOrder: 2 },
+      { label: 'GitHub', url: '#', sortOrder: 3 },
+      { label: 'Storybook', url: '#', sortOrder: 4 }
+    ].forEach((l) => insert.run(l))
+  }
+
+  const weekCount = db.prepare('SELECT COUNT(*) as n FROM prep_weeks').get() as { n: number }
+  if (weekCount.n === 0) {
+    // Plan "started" a week ago so week 2 is active on first run.
+    const planStart = addDays(new Date(), -7)
+    const insert = db.prepare(
+      `INSERT INTO prep_weeks (week_number, title, description, start_date, end_date)
+       VALUES (@weekNumber, @title, @description, @startDate, @endDate)`
+    )
+    const weeks = [
+      {
+        weekNumber: 1,
+        title: 'JS/TS & React fundamentals refresh',
+        description: 'Closures, event loop, hooks internals, rendering behavior.'
+      },
+      {
+        weekNumber: 2,
+        title: 'Next.js App Router + RSC',
+        description: 'Server components, streaming, data fetching patterns, caching.'
+      },
+      {
+        weekNumber: 3,
+        title: 'System design for frontend leads',
+        description: 'Micro-frontends, monorepo strategy, performance & scale trade-offs.'
+      },
+      {
+        weekNumber: 4,
+        title: 'Leadership & mock interviews',
+        description: 'Behavioral rounds, team-lead scenarios, mock panel sessions.'
+      }
+    ]
+    weeks.forEach((w, i) => {
+      const startDate = addDays(planStart, i * 7)
+      const endDate = addDays(startDate, 6)
+      insert.run({
+        ...w,
+        startDate: format(startDate, 'yyyy-MM-dd'),
+        endDate: format(endDate, 'yyyy-MM-dd')
+      })
+    })
+  }
+
+  const insertMeta = db.prepare('INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)')
+  insertMeta.run('studyStreakDays', '9')
+  insertMeta.run('lastStudyDate', format(addDays(new Date(), -1), 'yyyy-MM-dd'))
+  insertMeta.run('weatherCache', '')
 }
 
 function rowToCategory(row: any): Category {
@@ -295,6 +397,123 @@ export function setSetting<T extends keyof AppSettings>(key: T, value: AppSettin
     `INSERT INTO settings (key, value) VALUES (?, ?)
      ON CONFLICT(key) DO UPDATE SET value = excluded.value`
   ).run(key, String(value))
+}
+
+// ---- Generic string metadata (used by the dashboard for the study streak & weather cache;
+// separate from the strictly-typed AppSettings above, which is what Settings exposes). ----
+
+export function getRawMeta(key: string): string | undefined {
+  const row = db.prepare('SELECT value FROM settings WHERE key = ?').get(key) as
+    | { value: string }
+    | undefined
+  return row?.value
+}
+
+export function setRawMeta(key: string, value: string): void {
+  db.prepare(
+    `INSERT INTO settings (key, value) VALUES (?, ?)
+     ON CONFLICT(key) DO UPDATE SET value = excluded.value`
+  ).run(key, value)
+}
+
+// ---- Todos ----
+
+function rowToTodo(row: any): Todo {
+  return { id: row.id, text: row.text, done: !!row.done, sortOrder: row.sort_order }
+}
+
+export function getTodos(): Todo[] {
+  return (db.prepare('SELECT * FROM todos ORDER BY sort_order, id').all() as any[]).map(rowToTodo)
+}
+
+export function addTodo(text: string): Todo[] {
+  const maxOrder = db.prepare('SELECT COALESCE(MAX(sort_order), -1) as m FROM todos').get() as {
+    m: number
+  }
+  db.prepare('INSERT INTO todos (text, done, sort_order) VALUES (?, 0, ?)').run(
+    text,
+    maxOrder.m + 1
+  )
+  return getTodos()
+}
+
+export function toggleTodo(id: number): Todo[] {
+  db.prepare('UPDATE todos SET done = 1 - done WHERE id = ?').run(id)
+  return getTodos()
+}
+
+export function deleteTodo(id: number): Todo[] {
+  db.prepare('DELETE FROM todos WHERE id = ?').run(id)
+  return getTodos()
+}
+
+// ---- Quick links ----
+
+function rowToLink(row: any): QuickLink {
+  return { id: row.id, label: row.label, url: row.url, sortOrder: row.sort_order }
+}
+
+export function getLinks(): QuickLink[] {
+  return (db.prepare('SELECT * FROM links ORDER BY sort_order, id').all() as any[]).map(rowToLink)
+}
+
+export function addLink(label: string, url: string): QuickLink[] {
+  const maxOrder = db.prepare('SELECT COALESCE(MAX(sort_order), -1) as m FROM links').get() as {
+    m: number
+  }
+  db.prepare('INSERT INTO links (label, url, sort_order) VALUES (?, ?, ?)').run(
+    label,
+    url,
+    maxOrder.m + 1
+  )
+  return getLinks()
+}
+
+export function deleteLink(id: number): QuickLink[] {
+  db.prepare('DELETE FROM links WHERE id = ?').run(id)
+  return getLinks()
+}
+
+// ---- Interview prep plan ----
+
+function rowToPrepWeek(row: any, today: string): PrepWeek {
+  return {
+    id: row.id,
+    weekNumber: row.week_number,
+    title: row.title,
+    description: row.description,
+    startDate: row.start_date,
+    endDate: row.end_date,
+    current: today >= row.start_date && today <= row.end_date
+  }
+}
+
+export function getPrepWeeks(): PrepWeek[] {
+  const today = format(new Date(), 'yyyy-MM-dd')
+  return (db.prepare('SELECT * FROM prep_weeks ORDER BY week_number').all() as any[]).map((row) =>
+    rowToPrepWeek(row, today)
+  )
+}
+
+export function getStudyStreakState(): { studyStreakDays: number; studiedToday: boolean } {
+  const today = format(new Date(), 'yyyy-MM-dd')
+  const lastStudyDate = getRawMeta('lastStudyDate') ?? ''
+  const studyStreakDays = Number(getRawMeta('studyStreakDays') ?? '0')
+  return { studyStreakDays, studiedToday: lastStudyDate === today }
+}
+
+export function markStudiedToday(): { studyStreakDays: number; studiedToday: boolean } {
+  const today = format(new Date(), 'yyyy-MM-dd')
+  const yesterday = format(addDays(new Date(), -1), 'yyyy-MM-dd')
+  const lastStudyDate = getRawMeta('lastStudyDate') ?? ''
+  const currentStreak = Number(getRawMeta('studyStreakDays') ?? '0')
+
+  if (lastStudyDate === today) return { studyStreakDays: currentStreak, studiedToday: true }
+
+  const nextStreak = lastStudyDate === yesterday ? currentStreak + 1 : 1
+  setRawMeta('studyStreakDays', String(nextStreak))
+  setRawMeta('lastStudyDate', today)
+  return { studyStreakDays: nextStreak, studiedToday: true }
 }
 
 export function getDb(): Database.Database {

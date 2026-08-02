@@ -9,6 +9,7 @@ import { createTray } from './tray'
 import { registerIpcHandlers } from './ipc'
 import { applyAutoLaunch } from './autoLaunch'
 import { startRoutinesWatcher } from './routines'
+import { startWeatherRefresh } from './weather'
 
 let mainWindow: BrowserWindow | null = null
 let isQuitting = false
@@ -80,6 +81,7 @@ app.whenReady().then(() => {
   })
   startNotificationTicker()
   startRoutinesWatcher()
+  startWeatherRefresh()
 
   applyAutoLaunch(getSetting('autoLaunch')).catch((err) => console.error('auto-launch setup failed', err))
 

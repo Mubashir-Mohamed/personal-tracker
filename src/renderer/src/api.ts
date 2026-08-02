@@ -5,10 +5,15 @@ import type {
   Category,
   DayType,
   JobHuntLogEntry,
+  JobHuntPipelineSummary,
+  PrepPlan,
+  QuickLink,
   RoutineRun,
   RoutineRunDetail,
   RoutineWithLatestRun,
   ScheduleRule,
+  Todo,
+  WeatherSnapshot,
   WeekStats
 } from '../../shared/types'
 
@@ -191,6 +196,138 @@ function buildMockApi(): Window['api'] {
     ])
   )
 
+  let todos: Todo[] = [
+    { id: 1, text: 'Review daily job match report', done: true, sortOrder: 0 },
+    { id: 2, text: 'Study: RSC & App Router — 1.5h', done: false, sortOrder: 1 },
+    { id: 3, text: 'Update resume with latest project', done: false, sortOrder: 2 }
+  ]
+
+  let links: QuickLink[] = [
+    { id: 1, label: 'Portfolio', url: '#', sortOrder: 0 },
+    { id: 2, label: 'Resume PDF', url: '#', sortOrder: 1 },
+    { id: 3, label: 'Naukri Profile', url: '#', sortOrder: 2 },
+    { id: 4, label: 'GitHub', url: '#', sortOrder: 3 },
+    { id: 5, label: 'Storybook', url: '#', sortOrder: 4 }
+  ]
+
+  const jobHuntPipeline: JobHuntPipelineSummary = {
+    linked: true,
+    scheduleLabel: 'Daily at 7:03 AM',
+    lastRunDate: dateStr,
+    scanned: 105,
+    strongFits: 7,
+    newSinceLastRun: 3,
+    bestMatchEver: {
+      title: 'Fullstack Developer (Python + React)',
+      company: 'VGreen Technology Solutions',
+      location: 'Kochi',
+      datePosted: '17 hours ago',
+      score: 77,
+      reason: 'Matches: react, typescript, node.js',
+      source: 'LinkedIn',
+      url: '#',
+      runDate: dateStr
+    },
+    topMatches: [
+      {
+        title: 'Fullstack Developer (Python + React)',
+        company: 'VGreen Technology Solutions',
+        location: 'Kochi',
+        datePosted: '17 hours ago',
+        score: 77,
+        reason: 'Matches: react, typescript, node.js',
+        source: 'LinkedIn',
+        url: '#'
+      },
+      {
+        title: 'Senior Full-Stack Node.js Developer',
+        company: 'BEO Software',
+        location: 'Kochi',
+        datePosted: '2 days ago',
+        score: 71,
+        reason: 'Matches: javascript, node.js, react, typescript',
+        source: 'Indeed',
+        url: '#'
+      },
+      {
+        title: 'Full Stack Developer',
+        company: 'Nerdience Technology',
+        location: 'Kochi',
+        datePosted: '2 days ago',
+        score: 70,
+        reason: 'Matches: angular, next.js, node.js, react',
+        source: 'Indeed',
+        url: '#'
+      }
+    ],
+    cities: [
+      { name: 'Bengaluru', count: 64 },
+      { name: 'Chennai', count: 32 },
+      { name: 'Kochi', count: 8 },
+      { name: 'Thiruvananthapuram', count: 1 }
+    ],
+    sources: [
+      { name: 'Naukri', count: 45 },
+      { name: 'LinkedIn', count: 40 },
+      { name: 'Indeed', count: 20 }
+    ],
+    excludeNote: '▲ .NET roles auto-filtered'
+  }
+
+  let prepPlan: PrepPlan = {
+    weeks: [
+      {
+        id: 1,
+        weekNumber: 1,
+        title: 'JS/TS & React fundamentals refresh',
+        description: 'Closures, event loop, hooks internals, rendering behavior.',
+        startDate: dateStr,
+        endDate: dateStr,
+        current: false
+      },
+      {
+        id: 2,
+        weekNumber: 2,
+        title: 'Next.js App Router + RSC',
+        description: 'Server components, streaming, data fetching patterns, caching.',
+        startDate: dateStr,
+        endDate: dateStr,
+        current: true
+      },
+      {
+        id: 3,
+        weekNumber: 3,
+        title: 'System design for frontend leads',
+        description: 'Micro-frontends, monorepo strategy, performance & scale trade-offs.',
+        startDate: dateStr,
+        endDate: dateStr,
+        current: false
+      },
+      {
+        id: 4,
+        weekNumber: 4,
+        title: 'Leadership & mock interviews',
+        description: 'Behavioral rounds, team-lead scenarios, mock panel sessions.',
+        startDate: dateStr,
+        endDate: dateStr,
+        current: false
+      }
+    ],
+    studyStreakDays: 9,
+    studiedToday: false
+  }
+
+  const weather: WeatherSnapshot = {
+    locationLabel: 'Kochi',
+    tempC: 25,
+    condition: 'Heavy rain',
+    isDay: false,
+    highC: 28,
+    lowC: 25,
+    precipChancePct: 60,
+    fetchedAt: today.toISOString()
+  }
+
   return {
     getToday: async () => ({
       date: dateStr,
@@ -248,7 +385,41 @@ function buildMockApi(): Window['api'] {
     pickWatchFile: async () => '/Users/mock/picked-file.xlsx',
     openRoutineRunFile: async () => {},
     openRoutineRunSidecarFile: async (_runId, filename) =>
-      filename.endsWith('.pdf') ? { ok: true } : { ok: false, error: "That file wasn't saved with this run's snapshot" }
+      filename.endsWith('.pdf') ? { ok: true } : { ok: false, error: "That file wasn't saved with this run's snapshot" },
+
+    getTodos: async () => todos,
+    addTodo: async (text) => {
+      todos.push({ id: todos.length + 1, text, done: false, sortOrder: todos.length })
+      return todos
+    },
+    toggleTodo: async (id) => {
+      const t = todos.find((x) => x.id === id)
+      if (t) t.done = !t.done
+      return todos
+    },
+    deleteTodo: async (id) => {
+      todos = todos.filter((x) => x.id !== id)
+      return todos
+    },
+
+    getLinks: async () => links,
+    addLink: async (label, url) => {
+      links.push({ id: links.length + 1, label, url, sortOrder: links.length })
+      return links
+    },
+    deleteLink: async (id) => {
+      links = links.filter((x) => x.id !== id)
+      return links
+    },
+    openExternal: async () => {},
+
+    getJobHuntPipeline: async () => jobHuntPipeline,
+    getPrepPlan: async () => prepPlan,
+    markStudiedToday: async () => {
+      prepPlan = { ...prepPlan, studiedToday: true, studyStreakDays: prepPlan.studyStreakDays + 1 }
+      return prepPlan
+    },
+    getWeather: async () => weather
   }
 }
 
@@ -264,14 +435,21 @@ export type {
   DayStat,
   DayType,
   JobHuntLogEntry,
+  JobHuntPipelineSummary,
+  JobListing,
   ParsedSheet,
   ParsedWorkbook,
+  PrepPlan,
+  PrepWeek,
+  QuickLink,
   Routine,
   RoutineRun,
   RoutineRunDetail,
   RoutineWithLatestRun,
   RunStatus,
   ScheduleRule,
+  Todo,
   TodaySnapshot,
+  WeatherSnapshot,
   WeekStats
 } from '../../shared/types'

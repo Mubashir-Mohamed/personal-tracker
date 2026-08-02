@@ -11,14 +11,33 @@ import {
   getRulesForDayType,
   updateRuleTimes,
   getSetting,
-  setSetting
+  setSetting,
+  getTodos,
+  addTodo,
+  toggleTodo,
+  deleteTodo,
+  getLinks,
+  addLink,
+  deleteLink,
+  getPrepWeeks,
+  getStudyStreakState,
+  markStudiedToday
 } from './db'
 import { dayTypeFor, todayString, ensureBlocksForDate } from './scheduler'
 import { getWeekDayStats, getStreakForKind } from './stats'
 import { applyAutoLaunch } from './autoLaunch'
 import { getRoutines, getRoutineRuns, getRoutineRunDetail, linkRoutineOutput } from './routinesDb'
 import { checkRoutinesNow } from './routines'
-import type { AppSettings, BlockStatus, DayType, JobHuntLogEntry, TodaySnapshot } from '../shared/types'
+import { getJobHuntPipelineSummary } from './jobHuntPipeline'
+import { fetchWeather, getCachedWeather } from './weather'
+import type {
+  AppSettings,
+  BlockStatus,
+  DayType,
+  JobHuntLogEntry,
+  PrepPlan,
+  TodaySnapshot
+} from '../shared/types'
 
 export function registerIpcHandlers(): void {
   ipcMain.handle('get-today', (): TodaySnapshot => {
@@ -124,4 +143,29 @@ export function registerIpcHandlers(): void {
     shell.openPath(target)
     return { ok: true }
   })
+
+  // ---- Dashboard (landing page) ----
+
+  ipcMain.handle('get-todos', () => getTodos())
+  ipcMain.handle('add-todo', (_e, text: string) => addTodo(text))
+  ipcMain.handle('toggle-todo', (_e, id: number) => toggleTodo(id))
+  ipcMain.handle('delete-todo', (_e, id: number) => deleteTodo(id))
+
+  ipcMain.handle('get-links', () => getLinks())
+  ipcMain.handle('add-link', (_e, label: string, url: string) => addLink(label, url))
+  ipcMain.handle('delete-link', (_e, id: number) => deleteLink(id))
+  ipcMain.handle('open-external', (_e, url: string) => shell.openExternal(url))
+
+  ipcMain.handle('get-job-hunt-pipeline', () => getJobHuntPipelineSummary())
+
+  ipcMain.handle('get-prep-plan', (): PrepPlan => {
+    const { studyStreakDays, studiedToday } = getStudyStreakState()
+    return { weeks: getPrepWeeks(), studyStreakDays, studiedToday }
+  })
+  ipcMain.handle('mark-studied-today', (): PrepPlan => {
+    const { studyStreakDays, studiedToday } = markStudiedToday()
+    return { weeks: getPrepWeeks(), studyStreakDays, studiedToday }
+  })
+
+  ipcMain.handle('get-weather', async () => getCachedWeather() ?? (await fetchWeather()))
 }

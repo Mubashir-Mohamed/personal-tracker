@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
+import Dashboard from './views/Dashboard'
 import Timeline from './views/Timeline'
 import Stats from './views/Stats'
 import Settings from './views/Settings'
 import Routines from './views/Routines'
 
-type View = 'timeline' | 'stats' | 'settings' | 'routines'
+type View = 'dashboard' | 'timeline' | 'stats' | 'settings' | 'routines'
 
 interface NavItem {
   id: View
@@ -26,6 +27,19 @@ function ChevronIcon(): React.JSX.Element {
     </svg>
   )
 }
+
+const NAV_STANDALONE: NavItem[] = [
+  {
+    id: 'dashboard',
+    label: 'Home',
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+        <path d="M4 11.5 12 4l8 7.5" />
+        <path d="M6 10v9a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-9" />
+      </svg>
+    )
+  }
+]
 
 const NAV_GROUPS: NavGroup[] = [
   {
@@ -94,12 +108,12 @@ const NAV_GROUPS: NavGroup[] = [
 ]
 
 function groupForView(view: View): string {
-  return NAV_GROUPS.find((g) => g.items.some((i) => i.id === view))?.id ?? NAV_GROUPS[0].id
+  return NAV_GROUPS.find((g) => g.items.some((i) => i.id === view))?.id ?? ''
 }
 
 function App(): React.JSX.Element {
-  const [view, setView] = useState<View>('timeline')
-  const [expandedGroup, setExpandedGroup] = useState<string>(groupForView('timeline'))
+  const [view, setView] = useState<View>('dashboard')
+  const [expandedGroup, setExpandedGroup] = useState<string>(groupForView('dashboard'))
 
   useEffect(() => {
     document.title = 'Personal Tracker'
@@ -107,6 +121,11 @@ function App(): React.JSX.Element {
 
   const selectView = (groupId: string, viewId: View): void => {
     setExpandedGroup(groupId)
+    setView(viewId)
+  }
+
+  const selectStandalone = (viewId: View): void => {
+    setExpandedGroup('')
     setView(viewId)
   }
 
@@ -122,6 +141,16 @@ function App(): React.JSX.Element {
           <span className="sidebar-brand-name">Personal Tracker</span>
         </div>
         <nav className="sidebar-nav">
+          {NAV_STANDALONE.map((item) => (
+            <button
+              key={item.id}
+              className={`sidebar-nav-item${view === item.id ? ' active' : ''}`}
+              onClick={() => selectStandalone(item.id)}
+            >
+              <span className="sidebar-nav-icon">{item.icon}</span>
+              {item.label}
+            </button>
+          ))}
           {NAV_GROUPS.map((group) => {
             const expanded = expandedGroup === group.id
             return (
@@ -155,6 +184,7 @@ function App(): React.JSX.Element {
         <div className="sidebar-footer">Personal Tracker — v1</div>
       </aside>
       <main className="content">
+        {view === 'dashboard' && <Dashboard />}
         {view === 'timeline' && <Timeline />}
         {view === 'stats' && <Stats />}
         {view === 'settings' && <Settings />}
