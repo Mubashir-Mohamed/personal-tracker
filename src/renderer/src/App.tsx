@@ -28,6 +28,17 @@ function ChevronIcon(): React.JSX.Element {
   )
 }
 
+function CollapseIcon({ collapsed }: { collapsed: boolean }): React.JSX.Element {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d={collapsed ? 'M9 5l7 7-7 7' : 'M15 5l-7 7 7 7'} />
+      <path d={collapsed ? 'M4 5v14' : 'M20 5v14'} />
+    </svg>
+  )
+}
+
+const SIDEBAR_COLLAPSED_KEY = 'sidebarCollapsed'
+
 const NAV_STANDALONE: NavItem[] = [
   {
     id: 'dashboard',
@@ -114,6 +125,9 @@ function groupForView(view: View): string {
 function App(): React.JSX.Element {
   const [view, setView] = useState<View>('dashboard')
   const [expandedGroup, setExpandedGroup] = useState<string>(groupForView('dashboard'))
+  const [collapsed, setCollapsed] = useState<boolean>(
+    () => localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === 'true'
+  )
 
   useEffect(() => {
     document.title = 'Personal Tracker'
@@ -133,12 +147,20 @@ function App(): React.JSX.Element {
     setExpandedGroup((prev) => (prev === groupId ? '' : groupId))
   }
 
+  const toggleCollapsed = (): void => {
+    setCollapsed((prev) => {
+      const next = !prev
+      localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(next))
+      return next
+    })
+  }
+
   return (
     <div className="app-shell">
-      <aside className="sidebar">
+      <aside className={`sidebar${collapsed ? ' collapsed' : ''}`}>
         <div className="sidebar-brand">
           <span className="sidebar-brand-dot" />
-          <span className="sidebar-brand-name">Personal Tracker</span>
+          <span className="nav-label sidebar-brand-name">Personal Tracker</span>
         </div>
         <nav className="sidebar-nav">
           {NAV_STANDALONE.map((item) => (
@@ -146,9 +168,10 @@ function App(): React.JSX.Element {
               key={item.id}
               className={`sidebar-nav-item${view === item.id ? ' active' : ''}`}
               onClick={() => selectStandalone(item.id)}
+              title={collapsed ? item.label : undefined}
             >
               <span className="sidebar-nav-icon">{item.icon}</span>
-              {item.label}
+              <span className="nav-label">{item.label}</span>
             </button>
           ))}
           {NAV_GROUPS.map((group) => {
@@ -158,9 +181,10 @@ function App(): React.JSX.Element {
                 <button
                   className={`nav-group-header${expanded ? ' expanded' : ''}`}
                   onClick={() => toggleGroup(group.id)}
+                  title={collapsed ? group.label : undefined}
                 >
                   <span className="sidebar-nav-icon">{group.icon}</span>
-                  <span className="nav-group-label">{group.label}</span>
+                  <span className="nav-label nav-group-label">{group.label}</span>
                   <ChevronIcon />
                 </button>
                 {expanded && (
@@ -170,9 +194,10 @@ function App(): React.JSX.Element {
                         key={item.id}
                         className={`sidebar-nav-item nested${view === item.id ? ' active' : ''}`}
                         onClick={() => selectView(group.id, item.id)}
+                        title={collapsed ? item.label : undefined}
                       >
                         <span className="sidebar-nav-icon">{item.icon}</span>
-                        {item.label}
+                        <span className="nav-label">{item.label}</span>
                       </button>
                     ))}
                   </div>
@@ -181,7 +206,16 @@ function App(): React.JSX.Element {
             )
           })}
         </nav>
-        <div className="sidebar-footer">Personal Tracker — v1</div>
+        <div className="sidebar-footer">
+          <span className="nav-label">Personal Tracker — v1</span>
+          <button
+            className="sidebar-collapse-btn"
+            onClick={toggleCollapsed}
+            title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            <CollapseIcon collapsed={collapsed} />
+          </button>
+        </div>
       </aside>
       <main className="content">
         {view === 'dashboard' && <Dashboard />}
