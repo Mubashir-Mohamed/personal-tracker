@@ -1614,3 +1614,108 @@ body {
   color: var(--bg);
   border-color: var(--accent);
 }
+
+/* ---------- Claude Code: transcript viewer ---------- */
+
+.claude-transcript-msg {
+  padding: 12px 0;
+  border-top: 1px solid var(--border-soft);
+}
+
+.claude-transcript-msg:first-child {
+  border-top: none;
+  padding-top: 0;
+}
+
+.claude-msg-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-tertiary);
+}
+
+.claude-transcript-msg.role-user .claude-msg-role {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.claude-transcript-msg.role-assistant .claude-msg-role {
+  color: var(--text-secondary);
+  font-weight: 700;
+}
+
+.claude-msg-text {
+  font-size: 13px;
+  color: var(--text-primary);
+  line-height: 1.6;
+  white-space: pre-wrap;
+  margin-bottom: 6px;
+}
+
+.claude-tool-line {
+  font-size: 11.5px;
+  color: var(--text-tertiary);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  margin-bottom: 6px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.claude-tool-line.error {
+  color: var(--danger);
+  background: var(--danger-soft);
+  border-color: color-mix(in srgb, var(--danger) 35%, transparent);
+}
+
+/* ---------- Claude Code: embedded terminal ---------- */
+
+.terminal-page {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 88px);
+}
+
+.terminal-shell {
+  flex: 1;
+  min-height: 0;
+  background: #000;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 10px;
+  overflow: hidden;
+}
+
+.terminal-shell .xterm,
+.terminal-shell .xterm-viewport {
+  height: 100%;
+}
+
+.terminal-start-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.terminal-start-form .field-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.terminal-start-form input[type='text'] {
+  flex: 1;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 12.5px;
+  padding: 8px 10px;
+}

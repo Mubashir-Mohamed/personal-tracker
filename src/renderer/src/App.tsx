@@ -4,8 +4,17 @@ import Timeline from './views/Timeline'
 import Stats from './views/Stats'
 import Settings from './views/Settings'
 import Routines from './views/Routines'
+import ClaudeSessions from './views/ClaudeSessions'
+import ClaudeTerminal from './views/ClaudeTerminal'
 
-type View = 'dashboard' | 'timeline' | 'stats' | 'settings' | 'routines'
+type View =
+  | 'dashboard'
+  | 'timeline'
+  | 'stats'
+  | 'settings'
+  | 'routines'
+  | 'claude-sessions'
+  | 'claude-terminal'
 
 interface NavItem {
   id: View
@@ -22,7 +31,13 @@ interface NavGroup {
 
 function ChevronIcon(): React.JSX.Element {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="nav-group-chevron-icon">
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      className="nav-group-chevron-icon"
+    >
       <path d="M9 6l6 6-6 6" />
     </svg>
   )
@@ -115,6 +130,37 @@ const NAV_GROUPS: NavGroup[] = [
         )
       }
     ]
+  },
+  {
+    id: 'claude-code',
+    label: 'Claude Code',
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+        <path d="M8 9l-4 3 4 3M16 9l4 3-4 3M13 6l-2 12" />
+      </svg>
+    ),
+    items: [
+      {
+        id: 'claude-sessions',
+        label: 'History',
+        icon: (
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+            <circle cx="12" cy="12" r="9" />
+            <path d="M12 7.5v5l3.5 2" />
+          </svg>
+        )
+      },
+      {
+        id: 'claude-terminal',
+        label: 'Terminal',
+        icon: (
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+            <rect x="3.5" y="4" width="17" height="16" rx="2" />
+            <path d="M7 9l3 3-3 3M13 15h4" />
+          </svg>
+        )
+      }
+    ]
   }
 ]
 
@@ -128,6 +174,13 @@ function App(): React.JSX.Element {
   const [collapsed, setCollapsed] = useState<boolean>(
     () => localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === 'true'
   )
+  // Lifted so History's Resume button can hand off to Terminal without a race: Terminal only
+  // calls startClaudeSession once its own xterm instance has mounted and reported its size.
+  const [pendingClaudeAction, setPendingClaudeAction] = useState<{
+    mode: 'resume'
+    cwd: string
+    sessionId: string
+  } | null>(null)
 
   useEffect(() => {
     document.title = 'Personal Tracker'
@@ -141,6 +194,11 @@ function App(): React.JSX.Element {
   const selectStandalone = (viewId: View): void => {
     setExpandedGroup('')
     setView(viewId)
+  }
+
+  const resumeClaudeSession = (cwd: string, sessionId: string): void => {
+    setPendingClaudeAction({ mode: 'resume', cwd, sessionId })
+    selectView('claude-code', 'claude-terminal')
   }
 
   const toggleGroup = (groupId: string): void => {
@@ -223,6 +281,14 @@ function App(): React.JSX.Element {
         {view === 'stats' && <Stats />}
         {view === 'settings' && <Settings />}
         {view === 'routines' && <Routines />}
+        {view === 'claude-sessions' && <ClaudeSessions onResume={resumeClaudeSession} />}
+        {view === 'claude-terminal' && (
+          <ClaudeTerminal
+            pendingAction={pendingClaudeAction}
+            onPendingActionHandled={() => setPendingClaudeAction(null)}
+            onOpenSettings={() => selectView('time-management', 'settings')}
+          />
+        )}
       </main>
     </div>
   )

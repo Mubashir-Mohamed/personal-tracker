@@ -190,3 +190,52 @@ export interface WeatherSnapshot {
   precipChancePct: number
   fetchedAt: string
 }
+
+// ---- Claude Code session viewer + embedded terminal ----
+
+export interface ClaudeSessionSummary {
+  sessionId: string
+  filePath: string // absolute path to the .jsonl; primary key for get-transcript
+  cwd: string
+  title: string | null
+  lastActiveAt: string // ISO, from fs.stat mtime
+  messageCount: number
+}
+
+export type ClaudeContentBlockSummary =
+  | { type: 'text'; text: string }
+  | { type: 'tool_use'; label: string }
+  | { type: 'tool_result'; label: string; isError: boolean }
+
+export interface ClaudeTranscriptEntry {
+  uuid: string
+  role: 'user' | 'assistant'
+  timestamp: string | null
+  blocks: ClaudeContentBlockSummary[]
+}
+
+export type ClaudeBinarySource = 'override' | 'login-shell' | 'well-known-path' | 'not-found'
+export interface ClaudeBinaryStatus {
+  path: string | null
+  source: ClaudeBinarySource
+}
+
+export type ClaudePtyStartRequest =
+  | { mode: 'new'; cwd: string; cols: number; rows: number }
+  | { mode: 'resume'; cwd: string; sessionId: string; cols: number; rows: number }
+
+export interface ClaudePtyStartResult {
+  ok: boolean
+  error?: string
+  pid?: number
+}
+export interface ClaudePtyStatus {
+  running: boolean
+  cwd: string | null
+  sessionId: string | null
+  pid: number | null
+}
+export interface ClaudePtyExitInfo {
+  code: number | null
+  signal: string | null
+}

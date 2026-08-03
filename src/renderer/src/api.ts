@@ -3,6 +3,10 @@ import type {
   BlockInstanceWithCategory,
   BlockStatus,
   Category,
+  ClaudeBinaryStatus,
+  ClaudePtyStatus,
+  ClaudeSessionSummary,
+  ClaudeTranscriptEntry,
   DayType,
   JobHuntLogEntry,
   JobHuntPipelineSummary,
@@ -35,15 +39,71 @@ function buildMockApi(): Window['api'] {
 
   const rulesByDay: Record<DayType, ScheduleRule[]> = {
     weekday: [
-      { id: 1, dayType: 'weekday', categoryId: 1, startTime: '09:00', endTime: '13:15', label: 'Job Work', sortOrder: 0 },
-      { id: 2, dayType: 'weekday', categoryId: 2, startTime: '13:15', endTime: '14:15', label: 'Lunch Break', sortOrder: 1 },
-      { id: 3, dayType: 'weekday', categoryId: 1, startTime: '14:15', endTime: '18:00', label: 'Job Work', sortOrder: 2 },
-      { id: 4, dayType: 'weekday', categoryId: 3, startTime: '18:30', endTime: '19:30', label: 'Job Hunt', sortOrder: 3 },
-      { id: 5, dayType: 'weekday', categoryId: 4, startTime: '19:30', endTime: '21:00', label: 'Family Time', sortOrder: 4 }
+      {
+        id: 1,
+        dayType: 'weekday',
+        categoryId: 1,
+        startTime: '09:00',
+        endTime: '13:15',
+        label: 'Job Work',
+        sortOrder: 0
+      },
+      {
+        id: 2,
+        dayType: 'weekday',
+        categoryId: 2,
+        startTime: '13:15',
+        endTime: '14:15',
+        label: 'Lunch Break',
+        sortOrder: 1
+      },
+      {
+        id: 3,
+        dayType: 'weekday',
+        categoryId: 1,
+        startTime: '14:15',
+        endTime: '18:00',
+        label: 'Job Work',
+        sortOrder: 2
+      },
+      {
+        id: 4,
+        dayType: 'weekday',
+        categoryId: 3,
+        startTime: '18:30',
+        endTime: '19:30',
+        label: 'Job Hunt',
+        sortOrder: 3
+      },
+      {
+        id: 5,
+        dayType: 'weekday',
+        categoryId: 4,
+        startTime: '19:30',
+        endTime: '21:00',
+        label: 'Family Time',
+        sortOrder: 4
+      }
     ],
     weekend: [
-      { id: 6, dayType: 'weekend', categoryId: 4, startTime: '09:00', endTime: '16:00', label: 'Family Time', sortOrder: 0 },
-      { id: 7, dayType: 'weekend', categoryId: 5, startTime: '16:00', endTime: '23:00', label: 'Leisure & Job Hunt', sortOrder: 1 }
+      {
+        id: 6,
+        dayType: 'weekend',
+        categoryId: 4,
+        startTime: '09:00',
+        endTime: '16:00',
+        label: 'Family Time',
+        sortOrder: 0
+      },
+      {
+        id: 7,
+        dayType: 'weekend',
+        categoryId: 5,
+        startTime: '16:00',
+        endTime: '23:00',
+        label: 'Leisure & Job Hunt',
+        sortOrder: 1
+      }
     ]
   }
 
@@ -69,8 +129,17 @@ function buildMockApi(): Window['api'] {
     }
   })
 
-  let jobHuntLog: JobHuntLogEntry = { date: dateStr, applicationsCount: 2, companies: ['Acme', 'Globex'], notes: '' }
-  const settings: AppSettings = { notificationLeadMinutes: 10, autoLaunch: true, timeTrackerEnabled: true }
+  let jobHuntLog: JobHuntLogEntry = {
+    date: dateStr,
+    applicationsCount: 2,
+    companies: ['Acme', 'Globex'],
+    notes: ''
+  }
+  const settings: AppSettings = {
+    notificationLeadMinutes: 10,
+    autoLaunch: true,
+    timeTrackerEnabled: true
+  }
 
   const weekStats: WeekStats = {
     days: [-3, -2, -1, 0].map((offset) => {
@@ -82,8 +151,18 @@ function buildMockApi(): Window['api'] {
         adherencePct: [62, 78, 91, 70][offset + 3],
         categories: [
           { categoryId: 1, category: categories[0], plannedMinutes: 465, doneMinutes: 420 },
-          { categoryId: 3, category: categories[2], plannedMinutes: 60, doneMinutes: offset === 0 ? 0 : 60 },
-          { categoryId: 4, category: categories[3], plannedMinutes: 90, doneMinutes: offset === 0 ? 0 : 90 }
+          {
+            categoryId: 3,
+            category: categories[2],
+            plannedMinutes: 60,
+            doneMinutes: offset === 0 ? 0 : 60
+          },
+          {
+            categoryId: 4,
+            category: categories[3],
+            plannedMinutes: 90,
+            doneMinutes: offset === 0 ? 0 : 90
+          }
         ]
       }
     }),
@@ -111,7 +190,7 @@ function buildMockApi(): Window['api'] {
       taskId: 'weekly-digest',
       name: 'weekly-digest',
       description: 'Summarize saved newsletters into a weekly digest',
-      prompt: 'Summarize this week\'s saved newsletters into a short digest.',
+      prompt: "Summarize this week's saved newsletters into a short digest.",
       scheduleLabel: null,
       watchPath: null,
       createdAt: today.toISOString(),
@@ -187,7 +266,9 @@ function buildMockApi(): Window['api'] {
               rows: [
                 ['Notes & Gaps — Daily Job Openings Report'],
                 ['1. No resume on file'],
-                ['Match scores are generic estimates, not personalized. Attach a resume for accuracy.']
+                [
+                  'Match scores are generic estimates, not personalized. Attach a resume for accuracy.'
+                ]
               ]
             }
           ]
@@ -322,6 +403,57 @@ function buildMockApi(): Window['api'] {
     fetchedAt: today.toISOString()
   }
 
+  const claudeSessions: ClaudeSessionSummary[] = [
+    {
+      sessionId: 'mock-session-1',
+      filePath: '/Users/mock/.claude/projects/-Users-mock-project/mock-session-1.jsonl',
+      cwd: '/Users/mock/project',
+      title: 'Fix flaky test in checkout flow',
+      lastActiveAt: today.toISOString(),
+      messageCount: 24
+    },
+    {
+      sessionId: 'mock-session-2',
+      filePath: '/Users/mock/.claude/projects/-Users-mock-other/mock-session-2.jsonl',
+      cwd: '/Users/mock/other-project',
+      title: null,
+      lastActiveAt: new Date(today.getTime() - 86_400_000).toISOString(),
+      messageCount: 6
+    }
+  ]
+
+  const claudeTranscripts: Record<string, ClaudeTranscriptEntry[]> = {
+    'mock-session-1': [
+      {
+        uuid: 'u1',
+        role: 'user',
+        timestamp: today.toISOString(),
+        blocks: [{ type: 'text', text: 'Can you fix the flaky checkout test?' }]
+      },
+      {
+        uuid: 'a1',
+        role: 'assistant',
+        timestamp: today.toISOString(),
+        blocks: [
+          { type: 'text', text: "Sure, let's look at the test file." },
+          { type: 'tool_use', label: 'Bash(npm test -- checkout)' },
+          {
+            type: 'tool_result',
+            label: '1 test failed: timing assertion off by 40ms',
+            isError: true
+          }
+        ]
+      }
+    ]
+  }
+
+  let claudeBinaryStatus: ClaudeBinaryStatus = {
+    path: '/opt/homebrew/bin/claude',
+    source: 'well-known-path'
+  }
+  let claudePtyStatus: ClaudePtyStatus = { running: false, cwd: null, sessionId: null, pid: null }
+  let lastClaudeCwd = '/Users/mock/project'
+
   return {
     getToday: async () => ({
       date: dateStr,
@@ -379,7 +511,9 @@ function buildMockApi(): Window['api'] {
     pickWatchFile: async () => '/Users/mock/picked-file.xlsx',
     openRoutineRunFile: async () => {},
     openRoutineRunSidecarFile: async (_runId, filename) =>
-      filename.endsWith('.pdf') ? { ok: true } : { ok: false, error: "That file wasn't saved with this run's snapshot" },
+      filename.endsWith('.pdf')
+        ? { ok: true }
+        : { ok: false, error: "That file wasn't saved with this run's snapshot" },
 
     getTodos: async () => todos,
     addTodo: async (text) => {
@@ -413,7 +547,42 @@ function buildMockApi(): Window['api'] {
       prepPlan = { ...prepPlan, studiedToday: true, studyStreakDays: prepPlan.studyStreakDays + 1 }
       return prepPlan
     },
-    getWeather: async () => weather
+    getWeather: async () => weather,
+
+    getClaudeSessions: async () => claudeSessions,
+    getClaudeTranscript: async (filePath) => {
+      const session = claudeSessions.find((s) => s.filePath === filePath)
+      return (session && claudeTranscripts[session.sessionId]) ?? []
+    },
+    getClaudeBinaryStatus: async () => claudeBinaryStatus,
+    setClaudeBinaryOverride: async (path) => {
+      claudeBinaryStatus = path
+        ? { path, source: 'override' }
+        : { path: '/opt/homebrew/bin/claude', source: 'well-known-path' }
+      return claudeBinaryStatus
+    },
+    getClaudeLastCwd: async () => lastClaudeCwd,
+    pickClaudeBinaryFile: async () => '/opt/homebrew/bin/claude',
+    pickClaudeWorkingDirectory: async () => '/Users/mock/project',
+    startClaudeSession: async (req) => {
+      if (req.mode === 'new') lastClaudeCwd = req.cwd
+      claudePtyStatus = {
+        running: true,
+        cwd: req.cwd,
+        sessionId: req.mode === 'resume' ? req.sessionId : null,
+        pid: 12345
+      }
+      return { ok: true, pid: 12345 }
+    },
+    stopClaudeSession: async () => {
+      claudePtyStatus = { running: false, cwd: null, sessionId: null, pid: null }
+    },
+    getClaudePtyStatus: async () => claudePtyStatus,
+    getClaudePtyBuffer: async () => '',
+    writeClaudePtyInput: () => {},
+    resizeClaudePty: () => {},
+    onClaudePtyData: () => () => {},
+    onClaudePtyExit: () => () => {}
   }
 }
 
@@ -426,6 +595,15 @@ export type {
   Category,
   CategoryKind,
   CategoryStat,
+  ClaudeBinarySource,
+  ClaudeBinaryStatus,
+  ClaudeContentBlockSummary,
+  ClaudePtyExitInfo,
+  ClaudePtyStartRequest,
+  ClaudePtyStartResult,
+  ClaudePtyStatus,
+  ClaudeSessionSummary,
+  ClaudeTranscriptEntry,
   DayStat,
   DayType,
   JobHuntLogEntry,

@@ -10,6 +10,7 @@ import { registerIpcHandlers } from './ipc'
 import { applyAutoLaunch } from './autoLaunch'
 import { startRoutinesWatcher } from './routines'
 import { startWeatherRefresh } from './weather'
+import { initClaudePty, killOnQuit as killClaudePty } from './claudePty'
 
 let mainWindow: BrowserWindow | null = null
 let isQuitting = false
@@ -83,7 +84,13 @@ app.whenReady().then(() => {
   startRoutinesWatcher()
   startWeatherRefresh()
 
-  applyAutoLaunch(getSetting('autoLaunch')).catch((err) => console.error('auto-launch setup failed', err))
+  initClaudePty((channel, ...args) => {
+    if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send(channel, ...args)
+  })
+
+  applyAutoLaunch(getSetting('autoLaunch')).catch((err) =>
+    console.error('auto-launch setup failed', err)
+  )
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
@@ -96,6 +103,9 @@ app.whenReady().then(() => {
 
 app.on('before-quit', () => {
   isQuitting = true
+  // This app has never spawned a long-lived child process before node-pty; without this,
+  // quitting via the tray would leave an orphaned `claude` process tree running invisibly.
+  killClaudePty()
 })
 
 // Keep running in the tray even with no windows open — that's the point of a menu bar app.

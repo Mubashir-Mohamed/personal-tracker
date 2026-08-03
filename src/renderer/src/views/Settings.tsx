@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api'
-import type { AppSettings, Category, DayType, ScheduleRule } from '../api'
+import type { AppSettings, Category, ClaudeBinaryStatus, DayType, ScheduleRule } from '../api'
 
 function RuleEditor({
   dayType,
@@ -17,7 +17,9 @@ function RuleEditor({
     api.getRules(dayType).then((r) => {
       setRules(r)
       setEdits(
-        Object.fromEntries(r.map((rule) => [rule.id, { startTime: rule.startTime, endTime: rule.endTime }]))
+        Object.fromEntries(
+          r.map((rule) => [rule.id, { startTime: rule.startTime, endTime: rule.endTime }])
+        )
       )
     })
   }, [dayType])
@@ -78,6 +80,96 @@ function RuleEditor({
   )
 }
 
+function claudeSourceLabel(source: ClaudeBinaryStatus['source']): string {
+  switch (source) {
+    case 'override':
+      return 'manual override'
+    case 'login-shell':
+      return 'detected via login shell'
+    case 'well-known-path':
+      return 'detected via well-known path'
+    case 'not-found':
+      return 'not found'
+  }
+}
+
+function ClaudeCodeSettings(): React.JSX.Element {
+  const [status, setStatus] = useState<ClaudeBinaryStatus | null>(null)
+  const [overrideInput, setOverrideInput] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    api.getClaudeBinaryStatus().then((s) => {
+      setStatus(s)
+      if (s.source === 'override' && s.path) setOverrideInput(s.path)
+    })
+  }, [])
+
+  const browse = async (): Promise<void> => {
+    const picked = await api.pickClaudeBinaryFile()
+    if (picked) setOverrideInput(picked)
+  }
+
+  const save = async (): Promise<void> => {
+    setSaving(true)
+    const s = await api.setClaudeBinaryOverride(overrideInput.trim() || null)
+    setStatus(s)
+    setSaving(false)
+  }
+
+  const clearOverride = async (): Promise<void> => {
+    setSaving(true)
+    const s = await api.setClaudeBinaryOverride(null)
+    setStatus(s)
+    setOverrideInput('')
+    setSaving(false)
+  }
+
+  return (
+    <div className="card card-pad settings-section">
+      <div className="section-title">Claude Code</div>
+      <div className="settings-field-row">
+        <span>Resolved binary</span>
+        <span className="block-meta" style={{ marginTop: 0, textAlign: 'right' }}>
+          {status ? (status.path ?? 'Not found') : 'Checking…'}
+          {status?.path && ` (${claudeSourceLabel(status.source)})`}
+        </span>
+      </div>
+      <div className="settings-field-row">
+        <span>Manual override</span>
+        <div style={{ display: 'flex', gap: 8, flex: 1, justifyContent: 'flex-end' }}>
+          <input
+            type="text"
+            value={overrideInput}
+            onChange={(e) => setOverrideInput(e.target.value)}
+            placeholder="/path/to/claude"
+            style={{
+              flex: 1,
+              maxWidth: 320,
+              background: 'var(--bg-elevated)',
+              border: '1px solid var(--border)',
+              borderRadius: 8,
+              padding: '6px 8px',
+              fontSize: 12.5
+            }}
+          />
+          <button className="btn" onClick={browse}>
+            Browse…
+          </button>
+        </div>
+      </div>
+      <div className="save-row" style={{ gap: 8 }}>
+        <button className="btn btn-ghost" onClick={clearOverride} disabled={saving}>
+          Clear override / re-detect
+        </button>
+        <button className="btn btn-primary" onClick={save} disabled={saving}>
+          {saving ? 'Saving…' : 'Save'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export default function Settings(): React.JSX.Element {
   const [categories, setCategories] = useState<Category[]>([])
   const [settings, setSettings] = useState<AppSettings | null>(null)
@@ -97,7 +189,9 @@ export default function Settings(): React.JSX.Element {
       <div className="page-header">
         <div>
           <div className="page-title">Settings</div>
-          <div className="page-subtitle">Adjust your recurring schedule and notification behavior</div>
+          <div className="page-subtitle">
+            Adjust your recurring schedule and notification behavior
+          </div>
         </div>
       </div>
 
@@ -115,8 +209,8 @@ export default function Settings(): React.JSX.Element {
           </div>
           {!settings.timeTrackerEnabled && (
             <div className="block-meta" style={{ marginTop: 6 }}>
-              Turned off — no new schedule blocks will be created and no notifications will fire until you turn
-              this back on.
+              Turned off — no new schedule blocks will be created and no notifications will fire
+              until you turn this back on.
             </div>
           )}
         </div>
@@ -128,6 +222,8 @@ export default function Settings(): React.JSX.Element {
           <RuleEditor dayType="weekend" categories={categories} />
         </>
       )}
+
+      <ClaudeCodeSettings />
 
       {settings && (
         <div className="card card-pad settings-section">

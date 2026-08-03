@@ -5,6 +5,13 @@ import type {
   BlockInstanceWithCategory,
   BlockStatus,
   Category,
+  ClaudeBinaryStatus,
+  ClaudePtyExitInfo,
+  ClaudePtyStartRequest,
+  ClaudePtyStartResult,
+  ClaudePtyStatus,
+  ClaudeSessionSummary,
+  ClaudeTranscriptEntry,
   DayType,
   JobHuntLogEntry,
   JobHuntPipelineSummary,
@@ -29,7 +36,8 @@ const api = {
     blockId: number,
     start: string,
     end: string
-  ): Promise<BlockInstanceWithCategory[]> => ipcRenderer.invoke('reschedule-block', blockId, start, end),
+  ): Promise<BlockInstanceWithCategory[]> =>
+    ipcRenderer.invoke('reschedule-block', blockId, start, end),
   getJobHuntLog: (date: string): Promise<JobHuntLogEntry | null> =>
     ipcRenderer.invoke('get-job-hunt-log', date),
   upsertJobHuntLog: (entry: JobHuntLogEntry): Promise<JobHuntLogEntry> =>
@@ -59,8 +67,12 @@ const api = {
     ipcRenderer.invoke('link-routine-output', routineId, watchPath, scheduleLabel),
   checkRoutinesNow: (): Promise<RoutineWithLatestRun[]> => ipcRenderer.invoke('check-routines-now'),
   pickWatchFile: (): Promise<string | null> => ipcRenderer.invoke('pick-watch-file'),
-  openRoutineRunFile: (runId: number): Promise<void> => ipcRenderer.invoke('open-routine-run-file', runId),
-  openRoutineRunSidecarFile: (runId: number, filename: string): Promise<{ ok: boolean; error?: string }> =>
+  openRoutineRunFile: (runId: number): Promise<void> =>
+    ipcRenderer.invoke('open-routine-run-file', runId),
+  openRoutineRunSidecarFile: (
+    runId: number,
+    filename: string
+  ): Promise<{ ok: boolean; error?: string }> =>
     ipcRenderer.invoke('open-routine-run-sidecar-file', runId, filename),
 
   getTodos: (): Promise<Todo[]> => ipcRenderer.invoke('get-todos'),
@@ -80,7 +92,38 @@ const api = {
   getPrepPlan: (): Promise<PrepPlan> => ipcRenderer.invoke('get-prep-plan'),
   markStudiedToday: (): Promise<PrepPlan> => ipcRenderer.invoke('mark-studied-today'),
 
-  getWeather: (): Promise<WeatherSnapshot | null> => ipcRenderer.invoke('get-weather')
+  getWeather: (): Promise<WeatherSnapshot | null> => ipcRenderer.invoke('get-weather'),
+
+  getClaudeSessions: (): Promise<ClaudeSessionSummary[]> =>
+    ipcRenderer.invoke('get-claude-sessions'),
+  getClaudeTranscript: (filePath: string): Promise<ClaudeTranscriptEntry[]> =>
+    ipcRenderer.invoke('get-claude-transcript', filePath),
+  getClaudeBinaryStatus: (forceRefresh?: boolean): Promise<ClaudeBinaryStatus> =>
+    ipcRenderer.invoke('get-claude-binary-status', forceRefresh),
+  setClaudeBinaryOverride: (path: string | null): Promise<ClaudeBinaryStatus> =>
+    ipcRenderer.invoke('set-claude-binary-override', path),
+  getClaudeLastCwd: (): Promise<string> => ipcRenderer.invoke('get-claude-last-cwd'),
+  pickClaudeBinaryFile: (): Promise<string | null> => ipcRenderer.invoke('pick-claude-binary-file'),
+  pickClaudeWorkingDirectory: (): Promise<string | null> =>
+    ipcRenderer.invoke('pick-claude-working-directory'),
+  startClaudeSession: (req: ClaudePtyStartRequest): Promise<ClaudePtyStartResult> =>
+    ipcRenderer.invoke('start-claude-session', req),
+  stopClaudeSession: (): Promise<void> => ipcRenderer.invoke('stop-claude-session'),
+  getClaudePtyStatus: (): Promise<ClaudePtyStatus> => ipcRenderer.invoke('get-claude-pty-status'),
+  getClaudePtyBuffer: (): Promise<string> => ipcRenderer.invoke('get-claude-pty-buffer'),
+  writeClaudePtyInput: (data: string): void => ipcRenderer.send('write-claude-pty-input', data),
+  resizeClaudePty: (cols: number, rows: number): void =>
+    ipcRenderer.send('resize-claude-pty', cols, rows),
+  onClaudePtyData: (callback: (data: string) => void): (() => void) => {
+    const listener = (_e: unknown, data: string): void => callback(data)
+    ipcRenderer.on('claude-pty-data', listener)
+    return () => ipcRenderer.removeListener('claude-pty-data', listener)
+  },
+  onClaudePtyExit: (callback: (info: ClaudePtyExitInfo) => void): (() => void) => {
+    const listener = (_e: unknown, info: ClaudePtyExitInfo): void => callback(info)
+    ipcRenderer.on('claude-pty-exit', listener)
+    return () => ipcRenderer.removeListener('claude-pty-exit', listener)
+  }
 }
 
 export type PersonalTrackerApi = typeof api

@@ -1,5 +1,6 @@
 import { ipcMain, dialog, shell, BrowserWindow } from 'electron'
 import { existsSync } from 'fs'
+import { homedir } from 'os'
 import { dirname, join, basename } from 'path'
 import {
   getBlocksForDate,
@@ -21,7 +22,9 @@ import {
   deleteLink,
   getPrepWeeks,
   getStudyStreakState,
-  markStudiedToday
+  markStudiedToday,
+  getRawMeta,
+  setRawMeta
 } from './db'
 import { dayTypeFor, todayString, ensureBlocksForDate } from './scheduler'
 import { getWeekDayStats, getStreakForKind } from './stats'
@@ -30,9 +33,13 @@ import { getRoutines, getRoutineRuns, getRoutineRunDetail, linkRoutineOutput } f
 import { checkRoutinesNow } from './routines'
 import { getJobHuntPipelineSummary } from './jobHuntPipeline'
 import { fetchWeather, getCachedWeather } from './weather'
+import { listSessions, getTranscript } from './claudeSessions'
+import { resolveClaudeBinary, setBinaryOverride } from './claudeCli'
+import * as claudePty from './claudePty'
 import type {
   AppSettings,
   BlockStatus,
+  ClaudePtyStartRequest,
   DayType,
   JobHuntLogEntry,
   PrepPlan,
@@ -93,16 +100,22 @@ export function registerIpcHandlers(): void {
     timeTrackerEnabled: getSetting('timeTrackerEnabled')
   }))
 
-  ipcMain.handle('set-setting', async (_e, key: keyof AppSettings, value: string | number | boolean) => {
-    setSetting(key, value as never)
-    if (key === 'autoLaunch') await applyAutoLaunch(value as boolean)
-  })
+  ipcMain.handle(
+    'set-setting',
+    async (_e, key: keyof AppSettings, value: string | number | boolean) => {
+      setSetting(key, value as never)
+      if (key === 'autoLaunch') await applyAutoLaunch(value as boolean)
+    }
+  )
 
   ipcMain.handle('get-routines', () => getRoutines())
 
   ipcMain.handle('get-routine-runs', (_e, routineId: number) => getRoutineRuns(routineId))
 
-  ipcMain.handle('get-routine-run-detail', (_e, runId: number) => getRoutineRunDetail(runId) ?? null)
+  ipcMain.handle(
+    'get-routine-run-detail',
+    (_e, runId: number) => getRoutineRunDetail(runId) ?? null
+  )
 
   ipcMain.handle(
     'link-routine-output',
@@ -168,4 +181,53 @@ export function registerIpcHandlers(): void {
   })
 
   ipcMain.handle('get-weather', async () => getCachedWeather() ?? (await fetchWeather()))
+
+  // ---- Claude Code session viewer + embedded terminal ----
+
+  ipcMain.handle('get-claude-sessions', () => listSessions())
+
+  ipcMain.handle('get-claude-transcript', (_e, filePath: string) => getTranscript(filePath))
+
+  ipcMain.handle('get-claude-binary-status', (_e, forceRefresh?: boolean) =>
+    resolveClaudeBinary(forceRefresh)
+  )
+
+  ipcMain.handle('set-claude-binary-override', (_e, path: string | null) => setBinaryOverride(path))
+
+  ipcMain.handle('get-claude-last-cwd', () => getRawMeta('lastClaudeCwd') || homedir())
+
+  ipcMain.handle('pick-claude-binary-file', async () => {
+    const win = BrowserWindow.getFocusedWindow()
+    const result = win
+      ? await dialog.showOpenDialog(win, { properties: ['openFile'] })
+      : await dialog.showOpenDialog({ properties: ['openFile'] })
+    if (result.canceled || result.filePaths.length === 0) return null
+    return result.filePaths[0]
+  })
+
+  ipcMain.handle('pick-claude-working-directory', async () => {
+    const win = BrowserWindow.getFocusedWindow()
+    const result = win
+      ? await dialog.showOpenDialog(win, { properties: ['openDirectory', 'createDirectory'] })
+      : await dialog.showOpenDialog({ properties: ['openDirectory', 'createDirectory'] })
+    if (result.canceled || result.filePaths.length === 0) return null
+    return result.filePaths[0]
+  })
+
+  ipcMain.handle('start-claude-session', async (_e, req: ClaudePtyStartRequest) => {
+    if (req.mode === 'new') setRawMeta('lastClaudeCwd', req.cwd)
+    return claudePty.start(req)
+  })
+
+  ipcMain.handle('stop-claude-session', () => {
+    claudePty.stop()
+  })
+
+  ipcMain.handle('get-claude-pty-status', () => claudePty.getStatus())
+
+  ipcMain.handle('get-claude-pty-buffer', () => claudePty.getBuffer())
+
+  ipcMain.on('write-claude-pty-input', (_e, data: string) => claudePty.write(data))
+
+  ipcMain.on('resize-claude-pty', (_e, cols: number, rows: number) => claudePty.resize(cols, rows))
 }
