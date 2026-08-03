@@ -31,9 +31,17 @@ Tracks recurring Claude Code routines (set up via the `/schedule` skill):
 - Link a routine to the output file it overwrites each run (via a native file picker). The app polls every 5 minutes, and whenever that file changes it archives a dated snapshot and parses it.
 - Each day's snapshot is browsable as a real table (not an embedded spreadsheet) — sheets render as tabs, with a "Reveal original file" button for the raw file.
 
+### Claude Code
+
+Brings interactive Claude Code sessions into the app itself:
+
+- **History** — every past session is auto-discovered straight from `~/.claude/projects/**/*.jsonl` (no import step), listed with its title, working directory, last-active time, and message count. Click through to a read-only transcript view.
+- **Terminal** — a real embedded terminal (`node-pty` + `xterm.js`) driving your own already-authenticated `claude` CLI. Start a fresh session in any directory, or hit **Resume** on a past one from History to pick a conversation back up. One live session at a time; it keeps running in the background if you navigate away or hide the window, and is only stopped by an explicit Stop, starting a replacement, or quitting the app. Normal Claude Code permission prompts still appear — the app never passes `--dangerously-skip-permissions`.
+- The binary is auto-detected (login shell, then common install locations like nvm/Homebrew/Volta); override the path manually in Settings if needed.
+
 ## Tech stack
 
-Electron + React + TypeScript, scaffolded with `electron-vite`. `better-sqlite3` for storage, `exceljs` for reading workbook snapshots, `recharts` for charts, `date-fns` for date handling, `auto-launch` for the login item. The Home dashboard's weather chip calls the Open-Meteo REST API directly from the main process (`fetch`, no SDK).
+Electron + React + TypeScript, scaffolded with `electron-vite`. `better-sqlite3` for storage, `exceljs` for reading workbook snapshots, `recharts` for charts, `date-fns` for date handling, `auto-launch` for the login item, `node-pty` + `xterm.js` for the embedded Claude Code terminal. The Home dashboard's weather chip calls the Open-Meteo REST API directly from the main process (`fetch`, no SDK).
 
 ## Project setup
 
