@@ -166,6 +166,10 @@ function seedDefaults(): void {
 }
 
 function seedDashboardDefaults(): void {
+  // Gate the whole thing behind a one-time flag, not "table is currently empty" — otherwise
+  // deleting every todo/link down to zero would silently bring the sample data back on next launch.
+  if (getRawMeta('dashboardSeeded') === 'true') return
+
   const todoCount = db.prepare('SELECT COUNT(*) as n FROM todos').get() as { n: number }
   if (todoCount.n === 0) {
     const insert = db.prepare(
@@ -237,6 +241,8 @@ function seedDashboardDefaults(): void {
   insertMeta.run('studyStreakDays', '9')
   insertMeta.run('lastStudyDate', format(addDays(new Date(), -1), 'yyyy-MM-dd'))
   insertMeta.run('weatherCache', '')
+
+  setRawMeta('dashboardSeeded', 'true')
 }
 
 function rowToCategory(row: any): Category {
