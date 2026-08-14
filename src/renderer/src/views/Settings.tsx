@@ -1,6 +1,26 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api'
-import type { AppSettings, Category, ClaudeBinaryStatus, DayType, ScheduleRule } from '../api'
+import type {
+  AppSettings,
+  Category,
+  CategoryKind,
+  ClaudeBinaryStatus,
+  DayType,
+  RoutineWithLatestRun,
+  ScheduleRule
+} from '../api'
+
+const CATEGORY_KINDS: CategoryKind[] = ['work', 'job_hunt', 'family', 'break', 'leisure', 'other']
+
+const inputStyle: React.CSSProperties = {
+  background: 'var(--bg-elevated)',
+  border: '1px solid var(--border)',
+  borderRadius: 8,
+  padding: '6px 8px',
+  fontSize: 12.5,
+  color: 'var(--text-primary)',
+  fontFamily: 'inherit'
+}
 
 function RuleEditor({
   dayType,
@@ -10,23 +30,51 @@ function RuleEditor({
   categories: Category[]
 }): React.JSX.Element {
   const [rules, setRules] = useState<ScheduleRule[]>([])
-  const [edits, setEdits] = useState<Record<number, { startTime: string; endTime: string }>>({})
+  const [edits, setEdits] = useState<
+    Record<number, { startTime: string; endTime: string; label: string; categoryId: number }>
+  >({})
   const [saving, setSaving] = useState(false)
+  const [newBlock, setNewBlock] = useState({
+    label: '',
+    categoryId: 0,
+    startTime: '09:00',
+    endTime: '10:00'
+  })
+
+  const applyRules = (r: ScheduleRule[]): void => {
+    setRules(r)
+    setEdits(
+      Object.fromEntries(
+        r.map((rule) => [
+          rule.id,
+          {
+            startTime: rule.startTime,
+            endTime: rule.endTime,
+            label: rule.label,
+            categoryId: rule.categoryId
+          }
+        ])
+      )
+    )
+  }
+
+  const load = async (): Promise<void> => {
+    applyRules(await api.getRules(dayType))
+  }
 
   useEffect(() => {
-    api.getRules(dayType).then((r) => {
-      setRules(r)
-      setEdits(
-        Object.fromEntries(
-          r.map((rule) => [rule.id, { startTime: rule.startTime, endTime: rule.endTime }])
-        )
-      )
-    })
+    api.getRules(dayType).then(applyRules)
   }, [dayType])
 
   const categoryFor = (id: number): Category | undefined => categories.find((c) => c.id === id)
+  // Falls back to the first category once any exist, without needing an effect to sync it.
+  const newBlockCategoryId = newBlock.categoryId || categories[0]?.id || 0
 
-  const updateField = (ruleId: number, field: 'startTime' | 'endTime', value: string): void => {
+  const updateField = (
+    ruleId: number,
+    field: 'startTime' | 'endTime' | 'label' | 'categoryId',
+    value: string | number
+  ): void => {
     setEdits((prev) => ({ ...prev, [ruleId]: { ...prev[ruleId], [field]: value } }))
   }
 
@@ -34,13 +82,29 @@ function RuleEditor({
     setSaving(true)
     for (const rule of rules) {
       const edit = edits[rule.id]
-      if (edit && (edit.startTime !== rule.startTime || edit.endTime !== rule.endTime)) {
-        await api.updateRuleTimes(rule.id, edit.startTime, edit.endTime)
-      }
+      if (!edit) continue
+      const changed =
+        edit.startTime !== rule.startTime ||
+        edit.endTime !== rule.endTime ||
+        edit.label !== rule.label ||
+        edit.categoryId !== rule.categoryId
+      if (changed) await api.updateRule(rule.id, edit)
     }
-    const refreshed = await api.getRules(dayType)
-    setRules(refreshed)
+    await load()
     setSaving(false)
+  }
+
+  const addBlock = async (): Promise<void> => {
+    const label = newBlock.label.trim()
+    if (!label || !newBlockCategoryId) return
+    await api.addRule({ dayType, ...newBlock, categoryId: newBlockCategoryId, label })
+    setNewBlock((prev) => ({ ...prev, label: '' }))
+    await load()
+  }
+
+  const removeBlock = async (ruleId: number): Promise<void> => {
+    await api.deleteRule(ruleId, dayType)
+    await load()
   }
 
   return (
@@ -48,13 +112,39 @@ function RuleEditor({
       <div className="section-title">
         {dayType === 'weekday' ? 'Weekday schedule (Mon–Fri)' : 'Weekend schedule (Sat–Sun)'}
       </div>
+      {rules.length === 0 && (
+        <div className="empty-state">No blocks yet — add your first one below.</div>
+      )}
       {rules.map((rule) => {
-        const category = categoryFor(rule.categoryId)
-        const edit = edits[rule.id] ?? { startTime: rule.startTime, endTime: rule.endTime }
+        const edit = edits[rule.id] ?? {
+          startTime: rule.startTime,
+          endTime: rule.endTime,
+          label: rule.label,
+          categoryId: rule.categoryId
+        }
+        const category = categoryFor(edit.categoryId)
         return (
           <div className="rule-row" key={rule.id}>
             <span className="rule-color" style={{ background: category?.color }} />
-            <span className="rule-label">{rule.label}</span>
+            <select
+              className="rule-category-select"
+              style={inputStyle}
+              value={edit.categoryId}
+              onChange={(e) => updateField(rule.id, 'categoryId', Number(e.target.value))}
+            >
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+            <input
+              type="text"
+              className="rule-label-input"
+              style={{ ...inputStyle, flex: 1, minWidth: 100 }}
+              value={edit.label}
+              onChange={(e) => updateField(rule.id, 'label', e.target.value)}
+            />
             <div className="rule-times">
               <input
                 type="time"
@@ -68,13 +158,314 @@ function RuleEditor({
                 onChange={(e) => updateField(rule.id, 'endTime', e.target.value)}
               />
             </div>
+            <button className="icon-btn" onClick={() => removeBlock(rule.id)} title="Remove block">
+              ×
+            </button>
           </div>
         )
       })}
       <div className="save-row">
-        <button className="btn btn-primary" onClick={save} disabled={saving}>
+        <button className="btn btn-primary" onClick={save} disabled={saving || rules.length === 0}>
           {saving ? 'Saving…' : 'Save changes'}
         </button>
+      </div>
+      <div className="add-row">
+        <select
+          style={{ ...inputStyle, flex: '0 0 auto' }}
+          value={newBlockCategoryId}
+          onChange={(e) => setNewBlock((prev) => ({ ...prev, categoryId: Number(e.target.value) }))}
+        >
+          {categories.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+        </select>
+        <input
+          type="text"
+          placeholder="New block label"
+          value={newBlock.label}
+          onChange={(e) => setNewBlock((prev) => ({ ...prev, label: e.target.value }))}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') addBlock()
+          }}
+        />
+        <input
+          type="time"
+          value={newBlock.startTime}
+          onChange={(e) => setNewBlock((prev) => ({ ...prev, startTime: e.target.value }))}
+        />
+        <input
+          type="time"
+          value={newBlock.endTime}
+          onChange={(e) => setNewBlock((prev) => ({ ...prev, endTime: e.target.value }))}
+        />
+        <button className="add-btn" onClick={addBlock}>
+          + Add block
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function CategoryManager({
+  categories,
+  onChanged
+}: {
+  categories: Category[]
+  onChanged: () => void
+}): React.JSX.Element {
+  // `edits` only holds rows currently being typed into — anything not present here just
+  // falls back to the live `categories` prop (see editFor), so there's no props->state sync
+  // effect to keep in step and no risk of it clobbering in-progress edits on other rows.
+  const [edits, setEdits] = useState<
+    Record<number, { name: string; color: string; kind: CategoryKind }>
+  >({})
+  const [newCategory, setNewCategory] = useState({
+    name: '',
+    color: '#5b8def',
+    kind: 'other' as CategoryKind
+  })
+  const [error, setError] = useState<string | null>(null)
+
+  const editFor = (c: Category): { name: string; color: string; kind: CategoryKind } =>
+    edits[c.id] ?? { name: c.name, color: c.color, kind: c.kind }
+
+  const stage = (
+    id: number,
+    patch: Partial<{ name: string; color: string; kind: CategoryKind }>
+  ): void => {
+    setEdits((prev) => ({
+      ...prev,
+      [id]: { ...editFor(categories.find((c) => c.id === id)!), ...prev[id], ...patch }
+    }))
+  }
+
+  const commit = async (id: number): Promise<void> => {
+    const edit = edits[id]
+    if (!edit) return
+    await api.updateCategory(id, edit)
+    onChanged()
+  }
+
+  const remove = async (id: number): Promise<void> => {
+    const result = await api.deleteCategory(id)
+    if (!result.ok) {
+      setError(result.error ?? "Couldn't delete this category.")
+      setTimeout(() => setError(null), 4000)
+      return
+    }
+    onChanged()
+  }
+
+  const add = async (): Promise<void> => {
+    const name = newCategory.name.trim()
+    if (!name) return
+    await api.addCategory({ name, color: newCategory.color, kind: newCategory.kind })
+    setNewCategory({ name: '', color: '#5b8def', kind: 'other' })
+    onChanged()
+  }
+
+  return (
+    <div className="card card-pad settings-section">
+      <div className="section-title">Categories</div>
+      <div className="block-meta" style={{ marginBottom: 10 }}>
+        Color-codes your schedule blocks and drives the notification sound, streaks, and icon per
+        block (assign a category&apos;s <em>type</em> to make it count toward the matching stats
+        streak).
+      </div>
+      {error && (
+        <div className="report-banner" style={{ color: 'var(--danger)' }}>
+          {error}
+        </div>
+      )}
+      {categories.map((c) => {
+        const edit = editFor(c)
+        return (
+          <div className="rule-row" key={c.id}>
+            <input
+              type="color"
+              value={edit.color}
+              onChange={(e) => stage(c.id, { color: e.target.value })}
+              onBlur={() => commit(c.id)}
+              className="category-color-input"
+            />
+            <input
+              type="text"
+              className="rule-label-input"
+              style={{ ...inputStyle, flex: 1, minWidth: 100 }}
+              value={edit.name}
+              onChange={(e) => stage(c.id, { name: e.target.value })}
+              onBlur={() => commit(c.id)}
+            />
+            <select
+              style={inputStyle}
+              value={edit.kind}
+              onChange={(e) => {
+                stage(c.id, { kind: e.target.value as CategoryKind })
+                commit(c.id)
+              }}
+            >
+              {CATEGORY_KINDS.map((k) => (
+                <option key={k} value={k}>
+                  {k.replace('_', ' ')}
+                </option>
+              ))}
+            </select>
+            <button className="icon-btn" onClick={() => remove(c.id)} title="Delete category">
+              ×
+            </button>
+          </div>
+        )
+      })}
+      <div className="add-row">
+        <input
+          type="color"
+          value={newCategory.color}
+          onChange={(e) => setNewCategory((prev) => ({ ...prev, color: e.target.value }))}
+          className="category-color-input"
+        />
+        <input
+          type="text"
+          placeholder="New category name"
+          value={newCategory.name}
+          onChange={(e) => setNewCategory((prev) => ({ ...prev, name: e.target.value }))}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') add()
+          }}
+        />
+        <select
+          style={{ ...inputStyle, flex: '0 0 auto' }}
+          value={newCategory.kind}
+          onChange={(e) =>
+            setNewCategory((prev) => ({ ...prev, kind: e.target.value as CategoryKind }))
+          }
+        >
+          {CATEGORY_KINDS.map((k) => (
+            <option key={k} value={k}>
+              {k.replace('_', ' ')}
+            </option>
+          ))}
+        </select>
+        <button className="add-btn" onClick={add}>
+          + Add category
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function JobHuntRoutineSettings(): React.JSX.Element {
+  const [routines, setRoutines] = useState<RoutineWithLatestRun[]>([])
+  const [selected, setSelected] = useState<number | null>(null)
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    api.getRoutines().then(setRoutines)
+    api.getSettings().then((s) => setSelected(s.jobHuntRoutineId))
+  }, [])
+
+  const save = async (value: string): Promise<void> => {
+    const id = value ? Number(value) : null
+    setSelected(id)
+    setSaving(true)
+    await api.setSetting('jobHuntRoutineId', id)
+    setSaving(false)
+  }
+
+  return (
+    <div className="card card-pad settings-section">
+      <div className="section-title">Job Hunt pipeline</div>
+      <div className="block-meta" style={{ marginBottom: 10 }}>
+        Pick which routine (auto-discovered from <code>~/.claude/scheduled-tasks</code>) feeds the
+        Home dashboard&apos;s job-hunt card — nothing is guessed by name. Set one up with the{' '}
+        <code>/schedule</code> skill in Claude Code first if the list below is empty, then link it
+        to its output file from the Routines page.
+      </div>
+      {routines.length === 0 ? (
+        <div className="empty-state">No routines discovered yet.</div>
+      ) : (
+        <div className="settings-field-row">
+          <span>Linked routine</span>
+          <select
+            style={{ ...inputStyle, minWidth: 220 }}
+            value={selected ?? ''}
+            disabled={saving}
+            onChange={(e) => save(e.target.value)}
+          >
+            <option value="">None</option>
+            {routines.map((r) => (
+              <option key={r.id} value={r.id}>
+                {r.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function ProfileAndWeatherSettings({
+  settings,
+  updateSetting
+}: {
+  settings: AppSettings
+  updateSetting: <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => void
+}): React.JSX.Element {
+  return (
+    <div className="card card-pad settings-section">
+      <div className="section-title">Profile &amp; weather</div>
+      <div className="settings-field-row">
+        <span>Your name (used in the Home dashboard greeting)</span>
+        <input
+          type="text"
+          placeholder="optional"
+          value={settings.displayName}
+          onChange={(e) => updateSetting('displayName', e.target.value)}
+          style={{ ...inputStyle, width: 160 }}
+        />
+      </div>
+      <div className="settings-field-row">
+        <span>Weather location label</span>
+        <input
+          type="text"
+          value={settings.weatherLocationLabel}
+          onChange={(e) => updateSetting('weatherLocationLabel', e.target.value)}
+          style={{ ...inputStyle, width: 160 }}
+        />
+      </div>
+      <div className="settings-field-row">
+        <span>Latitude / longitude</span>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <input
+            type="number"
+            step="0.0001"
+            value={settings.weatherLat}
+            onChange={(e) => updateSetting('weatherLat', Number(e.target.value))}
+            style={{ ...inputStyle, width: 90 }}
+          />
+          <input
+            type="number"
+            step="0.0001"
+            value={settings.weatherLon}
+            onChange={(e) => updateSetting('weatherLon', Number(e.target.value))}
+            style={{ ...inputStyle, width: 90 }}
+          />
+        </div>
+      </div>
+      <div className="block-meta" style={{ marginTop: 6 }}>
+        Look up your city&apos;s coordinates on{' '}
+        <a
+          href="#"
+          onClick={(e) => {
+            e.preventDefault()
+            api.openExternal('https://www.latlong.net')
+          }}
+        >
+          latlong.net
+        </a>{' '}
+        — the weather chip refetches within 5 minutes of a change.
       </div>
     </div>
   )
@@ -174,14 +565,18 @@ export default function Settings(): React.JSX.Element {
   const [categories, setCategories] = useState<Category[]>([])
   const [settings, setSettings] = useState<AppSettings | null>(null)
 
-  useEffect(() => {
+  const refreshCategories = (): void => {
     api.getCategories().then(setCategories)
+  }
+
+  useEffect(() => {
+    refreshCategories()
     api.getSettings().then(setSettings)
   }, [])
 
   const updateSetting = <K extends keyof AppSettings>(key: K, value: AppSettings[K]): void => {
     setSettings((prev) => (prev ? { ...prev, [key]: value } : prev))
-    api.setSetting(key, value as string | number | boolean)
+    api.setSetting(key, value as string | number | boolean | null)
   }
 
   return (
@@ -190,7 +585,7 @@ export default function Settings(): React.JSX.Element {
         <div>
           <div className="page-title">Settings</div>
           <div className="page-subtitle">
-            Adjust your recurring schedule and notification behavior
+            Adjust your recurring schedule, categories, and notification behavior
           </div>
         </div>
       </div>
@@ -222,6 +617,12 @@ export default function Settings(): React.JSX.Element {
           <RuleEditor dayType="weekend" categories={categories} />
         </>
       )}
+
+      <CategoryManager categories={categories} onChanged={refreshCategories} />
+
+      <JobHuntRoutineSettings />
+
+      {settings && <ProfileAndWeatherSettings settings={settings} updateSetting={updateSetting} />}
 
       <ClaudeCodeSettings />
 

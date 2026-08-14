@@ -26,7 +26,9 @@ body {
   display: flex;
   flex-direction: column;
   padding: 20px 14px;
-  transition: width 0.15s ease, padding 0.15s ease;
+  transition:
+    width 0.15s ease,
+    padding 0.15s ease;
 }
 
 .sidebar-brand {
@@ -68,7 +70,9 @@ body {
   font-size: 13.5px;
   color: var(--text-secondary);
   cursor: pointer;
-  transition: background 0.15s, color 0.15s;
+  transition:
+    background 0.15s,
+    color 0.15s;
 }
 
 .sidebar-nav-item:hover {
@@ -106,7 +110,9 @@ body {
   font-weight: 600;
   color: var(--text-secondary);
   cursor: pointer;
-  transition: background 0.15s, color 0.15s;
+  transition:
+    background 0.15s,
+    color 0.15s;
 }
 
 .nav-group-header:hover {
@@ -340,7 +346,9 @@ body {
 
 .block-card.status-active {
   border-color: var(--cat-color, var(--accent));
-  box-shadow: 0 0 0 1px var(--cat-color, var(--accent)) inset, 0 8px 20px rgba(0, 0, 0, 0.3);
+  box-shadow:
+    0 0 0 1px var(--cat-color, var(--accent)) inset,
+    0 8px 20px rgba(0, 0, 0, 0.3);
 }
 
 .block-card.status-skipped {
@@ -461,7 +469,9 @@ body {
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
 }
 
 .btn:hover {
@@ -610,9 +620,26 @@ body {
 .rule-row {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 10px;
   padding: 10px 0;
   border-bottom: 1px solid var(--border-soft);
+  flex-wrap: wrap;
+}
+
+.rule-category-select,
+.rule-label-input {
+  min-width: 0;
+}
+
+.category-color-input {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: none;
+  flex-shrink: 0;
+  cursor: pointer;
 }
 
 .rule-row:last-child {
@@ -722,8 +749,7 @@ body {
   padding: 24px 26px;
   margin-bottom: 20px;
   background:
-    radial-gradient(circle at 100% 0%, var(--accent-soft) 0%, transparent 55%),
-    var(--bg-card);
+    radial-gradient(circle at 100% 0%, var(--accent-soft) 0%, transparent 55%), var(--bg-card);
 }
 
 .hero-top {
@@ -854,8 +880,14 @@ body {
   padding: 20px 24px;
   margin-bottom: 22px;
   border: 1px solid var(--cat-color, var(--border));
-  background: linear-gradient(135deg, color-mix(in srgb, var(--cat-color, var(--accent)) 14%, var(--bg-card)), var(--bg-card));
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--cat-color, var(--accent)) 25%, transparent) inset, var(--shadow-card);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--cat-color, var(--accent)) 14%, var(--bg-card)),
+    var(--bg-card)
+  );
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--cat-color, var(--accent)) 25%, transparent) inset,
+    var(--shadow-card);
 }
 
 .spotlight-icon {

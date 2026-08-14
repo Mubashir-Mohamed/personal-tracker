@@ -1,7 +1,12 @@
-import { basename } from 'path'
-import { getRoutineRunDetail, getRoutineRuns, getRoutines } from './routinesDb'
+import { getRoutine, getRoutineRunDetail, getRoutineRuns } from './routinesDb'
+import { getSetting } from './db'
 import { findHeaderRowIndex } from '../shared/sheetUtils'
-import type { JobHuntPipelineSummary, JobHuntRunSummary, JobListing, ParsedSheet } from '../shared/types'
+import type {
+  JobHuntPipelineSummary,
+  JobHuntRunSummary,
+  JobListing,
+  ParsedSheet
+} from '../shared/types'
 
 const STRONG_FIT_THRESHOLD = 70
 
@@ -54,14 +59,14 @@ const EMPTY_SUMMARY: JobHuntPipelineSummary = {
   runs: []
 }
 
-/** Reads the "daily-job-listing" Claude routine's already-archived xlsx snapshots
- *  (see routines.ts / routinesDb.ts) — no separate import pipeline needed. */
+/** Reads whichever Claude routine the user picked in Settings as their job-hunt pipeline
+ *  (any routine auto-discovered from ~/.claude/scheduled-tasks — see routines.ts / routinesDb.ts)
+ *  and summarizes its already-archived xlsx snapshots. No name-guessing: nothing here assumes
+ *  a routine is called "job-listing" or anything else, so it works with whatever the user named
+ *  theirs — it just isn't linked until they choose one. */
 export function getJobHuntPipelineSummary(): JobHuntPipelineSummary {
-  const routine = getRoutines().find((r) => {
-    if (!r.watchPath) return false
-    const haystack = `${basename(r.watchPath)} ${r.taskId} ${r.name}`
-    return /job.?openings|job.?listing/i.test(haystack)
-  })
+  const routineId = getSetting('jobHuntRoutineId')
+  const routine = routineId != null ? getRoutine(routineId) : undefined
   if (!routine) return EMPTY_SUMMARY
 
   const runsDesc = getRoutineRuns(routine.id).filter((r) => r.status === 'parsed')

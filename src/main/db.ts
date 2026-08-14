@@ -8,15 +8,25 @@ import type {
   BlockInstanceWithCategory,
   BlockStatus,
   Category,
+  CategoryInput,
   DayType,
+  DeleteResult,
   JobHuntLogEntry,
   PrepWeek,
+  PrepWeekInput,
   QuickLink,
   ScheduleRule,
+  ScheduleRuleInput,
   Todo
 } from '../shared/types'
 
 let db: Database.Database
+
+// Defaults preserve this app's original behavior (Kochi, India weather + no display name)
+// for anyone who never opens Settings; both are fully editable there.
+const DEFAULT_WEATHER_LAT = 9.9312
+const DEFAULT_WEATHER_LON = 76.2673
+const DEFAULT_WEATHER_LABEL = 'Kochi'
 
 export function initDb(): Database.Database {
   const dbPath = join(app.getPath('userData'), 'personal-tracker.db')
@@ -136,10 +146,8 @@ function seedDefaults(): void {
   const ids = {
     work: insertCategory.run('Job Work', '#5b8def', null, 'work').lastInsertRowid as number,
     lunch: insertCategory.run('Lunch Break', '#f2b134', null, 'break').lastInsertRowid as number,
-    jobHunt: insertCategory.run('Job Hunt', '#e0575b', null, 'job_hunt')
-      .lastInsertRowid as number,
-    family: insertCategory.run('Family Time', '#2fbf71', null, 'family')
-      .lastInsertRowid as number,
+    jobHunt: insertCategory.run('Job Hunt', '#e0575b', null, 'job_hunt').lastInsertRowid as number,
+    family: insertCategory.run('Family Time', '#2fbf71', null, 'family').lastInsertRowid as number,
     weekendLeisure: insertCategory.run('Leisure & Job Hunt', '#9b59b6', null, 'job_hunt')
       .lastInsertRowid as number
   }
@@ -149,7 +157,8 @@ function seedDefaults(): void {
      VALUES (?, ?, ?, ?, ?, ?)`
   )
 
-  // Weekday: 9am-6pm job, with 1:15-2:15pm lunch carved out, 1hr job hunt, 1.5hr family
+  // Starting template only — a sample weekday/weekend split anyone can freely add to, edit,
+  // or delete blocks/categories from in Settings. Nothing here is fixed.
   insertRule.run('weekday', ids.work, '09:00', '13:15', 'Job Work', 0)
   insertRule.run('weekday', ids.lunch, '13:15', '14:15', 'Lunch Break', 1)
   insertRule.run('weekday', ids.work, '14:15', '18:00', 'Job Work', 2)
@@ -306,6 +315,97 @@ export function updateRuleTimes(ruleId: number, startTime: string, endTime: stri
   )
 }
 
+/** Appends a new block to a day's schedule. Anyone can build their own routine from scratch —
+ *  there is no fixed number or set of blocks. */
+export function insertScheduleRule(rule: ScheduleRuleInput): ScheduleRule {
+  const maxOrder = db
+    .prepare('SELECT COALESCE(MAX(sort_order), -1) as m FROM schedule_rules WHERE day_type = ?')
+    .get(rule.dayType) as { m: number }
+  const info = db
+    .prepare(
+      `INSERT INTO schedule_rules (day_type, category_id, start_time, end_time, label, sort_order)
+       VALUES (?, ?, ?, ?, ?, ?)`
+    )
+    .run(rule.dayType, rule.categoryId, rule.startTime, rule.endTime, rule.label, maxOrder.m + 1)
+  return rowToRule(
+    db.prepare('SELECT * FROM schedule_rules WHERE id = ?').get(info.lastInsertRowid)
+  )
+}
+
+export function updateScheduleRule(ruleId: number, updates: Partial<ScheduleRuleInput>): void {
+  const existing = db.prepare('SELECT * FROM schedule_rules WHERE id = ?').get(ruleId) as any
+  if (!existing) return
+  const merged = {
+    categoryId: updates.categoryId ?? existing.category_id,
+    startTime: updates.startTime ?? existing.start_time,
+    endTime: updates.endTime ?? existing.end_time,
+    label: updates.label ?? existing.label
+  }
+  db.prepare(
+    'UPDATE schedule_rules SET category_id = ?, start_time = ?, end_time = ?, label = ? WHERE id = ?'
+  ).run(merged.categoryId, merged.startTime, merged.endTime, merged.label, ruleId)
+}
+
+/** Removing a block only affects future days — it un-links (doesn't delete) any already
+ *  materialized block_instances so past history stays intact. */
+export function deleteScheduleRule(ruleId: number): void {
+  db.prepare('UPDATE block_instances SET rule_id = NULL WHERE rule_id = ?').run(ruleId)
+  db.prepare('DELETE FROM schedule_rules WHERE id = ?').run(ruleId)
+}
+
+export function insertCategory(input: CategoryInput): Category {
+  const info = db
+    .prepare('INSERT INTO categories (name, color, sound_file, kind) VALUES (?, ?, ?, ?)')
+    .run(input.name, input.color, input.soundFile ?? null, input.kind)
+  return rowToCategory(
+    db.prepare('SELECT * FROM categories WHERE id = ?').get(info.lastInsertRowid)
+  )
+}
+
+export function updateCategory(id: number, updates: Partial<CategoryInput>): void {
+  const existing = getCategory(id)
+  if (!existing) return
+  const merged = {
+    name: updates.name ?? existing.name,
+    color: updates.color ?? existing.color,
+    kind: updates.kind ?? existing.kind,
+    soundFile: updates.soundFile !== undefined ? updates.soundFile : existing.soundFile
+  }
+  db.prepare(
+    'UPDATE categories SET name = ?, color = ?, sound_file = ?, kind = ? WHERE id = ?'
+  ).run(merged.name, merged.color, merged.soundFile, merged.kind, id)
+}
+
+/** Refuses to delete a category still referenced anywhere, so schedule_rules/block_instances
+ *  (both NOT NULL foreign keys to categories, and block_instances keeps its category_id even
+ *  after its schedule_rule is removed, to preserve history) never end up pointing at a category
+ *  that no longer exists. */
+export function deleteCategory(id: number): DeleteResult {
+  const inRules = db
+    .prepare('SELECT COUNT(*) as n FROM schedule_rules WHERE category_id = ?')
+    .get(id) as {
+    n: number
+  }
+  if (inRules.n > 0) {
+    return {
+      ok: false,
+      error: 'This category is used by one or more schedule blocks. Remove those blocks first.'
+    }
+  }
+  const inHistory = db
+    .prepare('SELECT COUNT(*) as n FROM block_instances WHERE category_id = ?')
+    .get(id) as { n: number }
+  if (inHistory.n > 0) {
+    return {
+      ok: false,
+      error:
+        "This category has past days' history recorded against it, so it can't be deleted (to keep stats accurate). You can still stop using it in your schedule."
+    }
+  }
+  db.prepare('DELETE FROM categories WHERE id = ?').run(id)
+  return { ok: true }
+}
+
 export function insertBlockInstance(
   block: Omit<BlockInstance, 'id' | 'status'> & { status?: BlockStatus }
 ): void {
@@ -326,7 +426,9 @@ export function getBlocksForDate(date: string): BlockInstanceWithCategory[] {
 
 export function getBlocksInRange(startDate: string, endDate: string): BlockInstanceWithCategory[] {
   const rows = db
-    .prepare('SELECT * FROM block_instances WHERE date >= ? AND date <= ? ORDER BY date, sort_order')
+    .prepare(
+      'SELECT * FROM block_instances WHERE date >= ? AND date <= ? ORDER BY date, sort_order'
+    )
     .all(startDate, endDate) as any[]
   const categories = new Map(getCategories().map((c) => [c.id, c]))
   return rows.map((row) => ({ ...rowToBlock(row), category: categories.get(row.category_id)! }))
@@ -337,9 +439,11 @@ export function updateBlockStatus(blockId: number, status: BlockStatus): void {
 }
 
 export function rescheduleBlock(blockId: number, plannedStart: string, plannedEnd: string): void {
-  db.prepare(
-    'UPDATE block_instances SET planned_start = ?, planned_end = ? WHERE id = ?'
-  ).run(plannedStart, plannedEnd, blockId)
+  db.prepare('UPDATE block_instances SET planned_start = ?, planned_end = ? WHERE id = ?').run(
+    plannedStart,
+    plannedEnd,
+    blockId
+  )
 }
 
 export function getBlocksNeedingNotification(
@@ -389,12 +493,18 @@ export function upsertJobHuntLog(entry: JobHuntLogEntry): void {
 
 export function getSetting<T extends keyof AppSettings>(key: T): AppSettings[T] {
   const row = db.prepare('SELECT value FROM settings WHERE key = ?').get(key) as
-    | { value: string }
-    | undefined
+    { value: string } | undefined
   const raw = row?.value
   if (key === 'notificationLeadMinutes') return Number(raw ?? 10) as AppSettings[T]
   if (key === 'autoLaunch') return ((raw ?? 'true') === 'true') as AppSettings[T]
   if (key === 'timeTrackerEnabled') return ((raw ?? 'true') === 'true') as AppSettings[T]
+  if (key === 'displayName') return (raw ?? '') as AppSettings[T]
+  if (key === 'weatherLocationLabel') return (raw ?? DEFAULT_WEATHER_LABEL) as AppSettings[T]
+  if (key === 'weatherLat') return Number(raw ?? DEFAULT_WEATHER_LAT) as AppSettings[T]
+  if (key === 'weatherLon') return Number(raw ?? DEFAULT_WEATHER_LON) as AppSettings[T]
+  if (key === 'jobHuntRoutineId') {
+    return (raw && raw !== 'null' ? Number(raw) : null) as AppSettings[T]
+  }
   throw new Error(`Unknown setting key: ${String(key)}`)
 }
 
@@ -410,8 +520,7 @@ export function setSetting<T extends keyof AppSettings>(key: T, value: AppSettin
 
 export function getRawMeta(key: string): string | undefined {
   const row = db.prepare('SELECT value FROM settings WHERE key = ?').get(key) as
-    | { value: string }
-    | undefined
+    { value: string } | undefined
   return row?.value
 }
 
@@ -499,6 +608,42 @@ export function getPrepWeeks(): PrepWeek[] {
   return (db.prepare('SELECT * FROM prep_weeks ORDER BY week_number').all() as any[]).map((row) =>
     rowToPrepWeek(row, today)
   )
+}
+
+export function addPrepWeek(input: Omit<PrepWeekInput, 'weekNumber'>): PrepWeek[] {
+  const maxNumber = db
+    .prepare('SELECT COALESCE(MAX(week_number), 0) as m FROM prep_weeks')
+    .get() as {
+    m: number
+  }
+  db.prepare(
+    `INSERT INTO prep_weeks (week_number, title, description, start_date, end_date)
+     VALUES (@weekNumber, @title, @description, @startDate, @endDate)`
+  ).run({ ...input, weekNumber: maxNumber.m + 1 })
+  return getPrepWeeks()
+}
+
+export function updatePrepWeek(id: number, updates: Partial<PrepWeekInput>): PrepWeek[] {
+  const existing = db.prepare('SELECT * FROM prep_weeks WHERE id = ?').get(id) as any
+  if (existing) {
+    const merged = {
+      weekNumber: updates.weekNumber ?? existing.week_number,
+      title: updates.title ?? existing.title,
+      description: updates.description ?? existing.description,
+      startDate: updates.startDate ?? existing.start_date,
+      endDate: updates.endDate ?? existing.end_date
+    }
+    db.prepare(
+      `UPDATE prep_weeks SET week_number = @weekNumber, title = @title, description = @description,
+         start_date = @startDate, end_date = @endDate WHERE id = @id`
+    ).run({ ...merged, id })
+  }
+  return getPrepWeeks()
+}
+
+export function deletePrepWeek(id: number): PrepWeek[] {
+  db.prepare('DELETE FROM prep_weeks WHERE id = ?').run(id)
+  return getPrepWeeks()
 }
 
 export function getStudyStreakState(): { studyStreakDays: number; studiedToday: boolean } {

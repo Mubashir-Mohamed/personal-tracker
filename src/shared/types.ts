@@ -56,6 +56,43 @@ export interface AppSettings {
   notificationLeadMinutes: number
   autoLaunch: boolean
   timeTrackerEnabled: boolean
+  /** Shown in the Home dashboard's boot-bar prompt/greeting. Empty string = generic greeting. */
+  displayName: string
+  /** Weather chip on the Home dashboard — all default to Kochi, India but are editable in Settings. */
+  weatherLocationLabel: string
+  weatherLat: number
+  weatherLon: number
+  /** Which auto-discovered Claude routine (see Routine below) feeds the Home dashboard's job-hunt
+   *  pipeline card. null = none selected yet, picked explicitly in Settings (no name-guessing). */
+  jobHuntRoutineId: number | null
+}
+
+export interface ScheduleRuleInput {
+  dayType: DayType
+  categoryId: number
+  startTime: string // 'HH:MM'
+  endTime: string // 'HH:MM'
+  label: string
+}
+
+export interface CategoryInput {
+  name: string
+  color: string
+  kind: CategoryKind
+  soundFile?: string | null
+}
+
+export interface PrepWeekInput {
+  weekNumber: number
+  title: string
+  description: string
+  startDate: string // 'YYYY-MM-DD'
+  endDate: string // 'YYYY-MM-DD'
+}
+
+export interface DeleteResult {
+  ok: boolean
+  error?: string
 }
 
 export interface CategoryStat {

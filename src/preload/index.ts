@@ -5,6 +5,7 @@ import type {
   BlockInstanceWithCategory,
   BlockStatus,
   Category,
+  CategoryInput,
   ClaudeBinaryStatus,
   ClaudePtyExitInfo,
   ClaudePtyStartRequest,
@@ -13,14 +14,18 @@ import type {
   ClaudeSessionSummary,
   ClaudeTranscriptEntry,
   DayType,
+  DeleteResult,
   JobHuntLogEntry,
   JobHuntPipelineSummary,
   PrepPlan,
+  PrepWeek,
+  PrepWeekInput,
   QuickLink,
   RoutineRun,
   RoutineRunDetail,
   RoutineWithLatestRun,
   ScheduleRule,
+  ScheduleRuleInput,
   Todo,
   TodaySnapshot,
   WeatherSnapshot,
@@ -45,9 +50,19 @@ const api = {
   getRules: (dayType: DayType): Promise<ScheduleRule[]> => ipcRenderer.invoke('get-rules', dayType),
   updateRuleTimes: (ruleId: number, start: string, end: string): Promise<void> =>
     ipcRenderer.invoke('update-rule-times', ruleId, start, end),
+  addRule: (rule: ScheduleRuleInput): Promise<ScheduleRule> => ipcRenderer.invoke('add-rule', rule),
+  updateRule: (ruleId: number, updates: Partial<ScheduleRuleInput>): Promise<void> =>
+    ipcRenderer.invoke('update-rule', ruleId, updates),
+  deleteRule: (ruleId: number, dayType: DayType): Promise<ScheduleRule[]> =>
+    ipcRenderer.invoke('delete-rule', ruleId, dayType),
+  addCategory: (input: CategoryInput): Promise<Category> =>
+    ipcRenderer.invoke('add-category', input),
+  updateCategory: (id: number, updates: Partial<CategoryInput>): Promise<Category[]> =>
+    ipcRenderer.invoke('update-category', id, updates),
+  deleteCategory: (id: number): Promise<DeleteResult> => ipcRenderer.invoke('delete-category', id),
   getWeekStats: (): Promise<WeekStats> => ipcRenderer.invoke('get-week-stats'),
   getSettings: (): Promise<AppSettings> => ipcRenderer.invoke('get-settings'),
-  setSetting: (key: keyof AppSettings, value: string | number | boolean): Promise<void> =>
+  setSetting: (key: keyof AppSettings, value: string | number | boolean | null): Promise<void> =>
     ipcRenderer.invoke('set-setting', key, value),
   onDayChanged: (callback: () => void): (() => void) => {
     const listener = (): void => callback()
@@ -91,6 +106,11 @@ const api = {
 
   getPrepPlan: (): Promise<PrepPlan> => ipcRenderer.invoke('get-prep-plan'),
   markStudiedToday: (): Promise<PrepPlan> => ipcRenderer.invoke('mark-studied-today'),
+  addPrepWeek: (input: Omit<PrepWeekInput, 'weekNumber'>): Promise<PrepWeek[]> =>
+    ipcRenderer.invoke('add-prep-week', input),
+  updatePrepWeek: (id: number, updates: Partial<PrepWeekInput>): Promise<PrepWeek[]> =>
+    ipcRenderer.invoke('update-prep-week', id, updates),
+  deletePrepWeek: (id: number): Promise<PrepWeek[]> => ipcRenderer.invoke('delete-prep-week', id),
 
   getWeather: (): Promise<WeatherSnapshot | null> => ipcRenderer.invoke('get-weather'),
 

@@ -1,6 +1,13 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api } from '../api'
-import type { JobHuntPipelineSummary, PrepPlan, QuickLink, Todo, WeatherSnapshot } from '../api'
+import type {
+  JobHuntPipelineSummary,
+  PrepPlan,
+  PrepWeek,
+  QuickLink,
+  Todo,
+  WeatherSnapshot
+} from '../api'
 
 function greeting(hour: number): string {
   if (hour < 12) return 'good morning'
@@ -11,6 +18,7 @@ function greeting(hour: number): string {
 function BootBar(): React.JSX.Element {
   const [now, setNow] = useState(new Date())
   const [weather, setWeather] = useState<WeatherSnapshot | null>(null)
+  const [displayName, setDisplayName] = useState('')
 
   useEffect(() => {
     const clock = setInterval(() => setNow(new Date()), 1000)
@@ -23,17 +31,28 @@ function BootBar(): React.JSX.Element {
     return () => clearInterval(interval)
   }, [])
 
+  useEffect(() => {
+    api.getSettings().then((s) => setDisplayName(s.displayName))
+  }, [])
+
   const hour12 = now.getHours() % 12 === 0 ? 12 : now.getHours() % 12
   const clockStr = `${String(hour12).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')} ${now.getHours() >= 12 ? 'PM' : 'AM'}`
-  const dateStr = now.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })
+  const dateStr = now.toLocaleDateString(undefined, {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric'
+  })
+  const slug = displayName.trim() ? displayName.trim().toLowerCase().replace(/\s+/g, '-') : 'user'
 
   return (
     <div className="card bootbar">
       <div className="scan-glow" aria-hidden="true" />
       <div className="boot-left">
-        <div className="boot-prompt">mubashir@personal-tracker ~ %</div>
+        <div className="boot-prompt">{slug}@personal-tracker ~ %</div>
         <div className="boot-line">
-          {greeting(now.getHours())}, mubashir<span className="cursor" />
+          {greeting(now.getHours())}
+          {displayName.trim() ? `, ${displayName.trim()}` : ''}
+          <span className="cursor" />
         </div>
       </div>
       <div className="boot-right">
@@ -102,8 +121,8 @@ function JobHuntCard(): React.JSX.Element {
           </div>
         </div>
         <div className="task-empty">
-          No job-listing routine linked yet — link one from Routines and it&apos;ll show up here
-          automatically.
+          No job-hunt routine selected yet — pick one for &quot;Job Hunt pipeline&quot; in Settings
+          (it must already be linked to an output file from the Routines page).
         </div>
       </div>
     )
@@ -123,7 +142,8 @@ function JobHuntCard(): React.JSX.Element {
           <div className="best-match-label">🏆 Best match to date</div>
           <div className="match">
             <div className="co">
-              {summary.bestMatchEver.title} <span className="role">
+              {summary.bestMatchEver.title}{' '}
+              <span className="role">
                 · {summary.bestMatchEver.company} · {summary.bestMatchEver.location}
               </span>
             </div>
@@ -177,8 +197,77 @@ function JobHuntCard(): React.JSX.Element {
   )
 }
 
+function PrepWeekEditRow({
+  week,
+  onSaved,
+  onDeleted
+}: {
+  week: PrepWeek
+  onSaved: () => void
+  onDeleted: () => void
+}): React.JSX.Element {
+  const [title, setTitle] = useState(week.title)
+  const [description, setDescription] = useState(week.description)
+
+  const commit = (): void => {
+    if (title === week.title && description === week.description) return
+    api.updatePrepWeek(week.id, { title, description }).then(onSaved)
+  }
+
+  return (
+    <div className={`plan-week${week.current ? ' current' : ''}`}>
+      <div className="plan-badge">WK {week.weekNumber}</div>
+      <div
+        className="plan-body"
+        style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1 }}
+      >
+        <input
+          type="text"
+          value={title}
+          placeholder="Week title"
+          onChange={(e) => setTitle(e.target.value)}
+          onBlur={commit}
+          style={{
+            background: 'var(--bg-elevated)',
+            border: '1px solid var(--border)',
+            borderRadius: 8,
+            padding: '5px 8px',
+            fontSize: 12.5,
+            color: 'var(--text-primary)'
+          }}
+        />
+        <textarea
+          value={description}
+          placeholder="Comma-separated topics"
+          onChange={(e) => setDescription(e.target.value)}
+          onBlur={commit}
+          rows={2}
+          style={{
+            background: 'var(--bg-elevated)',
+            border: '1px solid var(--border)',
+            borderRadius: 8,
+            padding: '5px 8px',
+            fontSize: 12,
+            color: 'var(--text-primary)',
+            resize: 'vertical'
+          }}
+        />
+      </div>
+      <button
+        className="icon-btn"
+        onClick={onDeleted}
+        title="Delete week"
+        style={{ alignSelf: 'flex-start' }}
+      >
+        ×
+      </button>
+    </div>
+  )
+}
+
 function PrepPlanCard(): React.JSX.Element {
   const [plan, setPlan] = useState<PrepPlan | null>(null)
+  const [editing, setEditing] = useState(false)
 
   const refresh = useCallback(() => {
     api.getPrepPlan().then(setPlan)
@@ -192,6 +281,21 @@ function PrepPlanCard(): React.JSX.Element {
     api.markStudiedToday().then(setPlan)
   }
 
+  const deleteWeek = (id: number): void => {
+    api.deletePrepWeek(id).then(refresh)
+  }
+
+  const addWeek = (): void => {
+    api
+      .addPrepWeek({
+        title: 'New week',
+        description: 'Topic one, topic two',
+        startDate: new Date().toISOString().slice(0, 10),
+        endDate: new Date().toISOString().slice(0, 10)
+      })
+      .then(refresh)
+  }
+
   if (!plan) return <div className="card card-pad db-col-5">Loading interview prep plan…</div>
 
   return (
@@ -200,26 +304,47 @@ function PrepPlanCard(): React.JSX.Element {
         <div className="term-title">
           ~/interview-prep<span className="term-sep"> %</span> cat plan.md
         </div>
-        <div className="term-tag">4-week plan</div>
+        <button
+          className="btn btn-ghost"
+          style={{ padding: '3px 10px', fontSize: 11.5 }}
+          onClick={() => setEditing((e) => !e)}
+        >
+          {editing ? 'Done' : 'Edit plan'}
+        </button>
       </div>
 
-      {plan.weeks.map((w) => (
-        <div className={`plan-week${w.current ? ' current' : ''}`} key={w.id}>
-          <div className="plan-badge">WK {w.weekNumber}</div>
-          <div className="plan-body">
-            <div className="plan-title">{w.title}</div>
-            <ul className="plan-items">
-              {w.description
-                .split(',')
-                .map((item) => item.replace(/\.$/, '').trim())
-                .filter(Boolean)
-                .map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-            </ul>
-          </div>
-        </div>
-      ))}
+      {editing
+        ? plan.weeks.map((w) => (
+            <PrepWeekEditRow
+              key={w.id}
+              week={w}
+              onSaved={refresh}
+              onDeleted={() => deleteWeek(w.id)}
+            />
+          ))
+        : plan.weeks.map((w) => (
+            <div className={`plan-week${w.current ? ' current' : ''}`} key={w.id}>
+              <div className="plan-badge">WK {w.weekNumber}</div>
+              <div className="plan-body">
+                <div className="plan-title">{w.title}</div>
+                <ul className="plan-items">
+                  {w.description
+                    .split(',')
+                    .map((item) => item.replace(/\.$/, '').trim())
+                    .filter(Boolean)
+                    .map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                </ul>
+              </div>
+            </div>
+          ))}
+
+      {editing && (
+        <button className="btn" style={{ marginTop: 8 }} onClick={addWeek}>
+          + Add week
+        </button>
+      )}
 
       <div className="streak-line">
         🔥 {plan.studyStreakDays}-day study streak

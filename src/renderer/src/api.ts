@@ -11,6 +11,7 @@ import type {
   JobHuntLogEntry,
   JobHuntPipelineSummary,
   PrepPlan,
+  PrepWeek,
   QuickLink,
   RoutineRun,
   RoutineRunDetail,
@@ -29,6 +30,10 @@ function toMinutes(t: string): number {
 /** Dev-only fallback so the UI is previewable in a plain browser tab (no Electron
  *  contextBridge available there). Never used inside the real Electron app. */
 function buildMockApi(): Window['api'] {
+  let nextCategoryId = 100
+  let nextRuleId = 100
+  let nextPrepWeekId = 100
+
   const categories: Category[] = [
     { id: 1, name: 'Job Work', color: '#5b8def', soundFile: null, kind: 'work' },
     { id: 2, name: 'Lunch Break', color: '#f2b134', soundFile: null, kind: 'break' },
@@ -138,7 +143,12 @@ function buildMockApi(): Window['api'] {
   const settings: AppSettings = {
     notificationLeadMinutes: 10,
     autoLaunch: true,
-    timeTrackerEnabled: true
+    timeTrackerEnabled: true,
+    displayName: '',
+    weatherLocationLabel: 'Kochi',
+    weatherLat: 9.9312,
+    weatherLon: 76.2673,
+    jobHuntRoutineId: 1
   }
 
   const weekStats: WeekStats = {
@@ -490,6 +500,53 @@ function buildMockApi(): Window['api'] {
         }
       }
     },
+    addRule: async (rule) => {
+      const created: ScheduleRule = {
+        id: nextRuleId++,
+        sortOrder: rulesByDay[rule.dayType].length,
+        ...rule
+      }
+      rulesByDay[rule.dayType].push(created)
+      return created
+    },
+    updateRule: async (ruleId, updates) => {
+      for (const rules of Object.values(rulesByDay)) {
+        const r = rules.find((x) => x.id === ruleId)
+        if (r) Object.assign(r, updates)
+      }
+    },
+    deleteRule: async (ruleId, dayType) => {
+      rulesByDay[dayType] = rulesByDay[dayType].filter((r) => r.id !== ruleId)
+      return rulesByDay[dayType]
+    },
+    addCategory: async (input) => {
+      const created: Category = {
+        id: nextCategoryId++,
+        soundFile: input.soundFile ?? null,
+        ...input
+      }
+      categories.push(created)
+      return created
+    },
+    updateCategory: async (id, updates) => {
+      const c = categories.find((x) => x.id === id)
+      if (c) Object.assign(c, updates)
+      return categories
+    },
+    deleteCategory: async (id) => {
+      const inUse = Object.values(rulesByDay).some((rules) =>
+        rules.some((r) => r.categoryId === id)
+      )
+      if (inUse) {
+        return {
+          ok: false,
+          error: 'This category is used by one or more schedule blocks. Remove those blocks first.'
+        }
+      }
+      const idx = categories.findIndex((c) => c.id === id)
+      if (idx >= 0) categories.splice(idx, 1)
+      return { ok: true }
+    },
     getWeekStats: async () => weekStats,
     getSettings: async () => settings,
     setSetting: async (key, value) => {
@@ -547,6 +604,27 @@ function buildMockApi(): Window['api'] {
       prepPlan = { ...prepPlan, studiedToday: true, studyStreakDays: prepPlan.studyStreakDays + 1 }
       return prepPlan
     },
+    addPrepWeek: async (input) => {
+      const week: PrepWeek = {
+        id: nextPrepWeekId++,
+        weekNumber: prepPlan.weeks.length + 1,
+        current: false,
+        ...input
+      }
+      prepPlan = { ...prepPlan, weeks: [...prepPlan.weeks, week] }
+      return prepPlan.weeks
+    },
+    updatePrepWeek: async (id, updates) => {
+      prepPlan = {
+        ...prepPlan,
+        weeks: prepPlan.weeks.map((w) => (w.id === id ? { ...w, ...updates } : w))
+      }
+      return prepPlan.weeks
+    },
+    deletePrepWeek: async (id) => {
+      prepPlan = { ...prepPlan, weeks: prepPlan.weeks.filter((w) => w.id !== id) }
+      return prepPlan.weeks
+    },
     getWeather: async () => weather,
 
     getClaudeSessions: async () => claudeSessions,
@@ -593,6 +671,7 @@ export type {
   BlockInstanceWithCategory,
   BlockStatus,
   Category,
+  CategoryInput,
   CategoryKind,
   CategoryStat,
   ClaudeBinarySource,
@@ -606,6 +685,7 @@ export type {
   ClaudeTranscriptEntry,
   DayStat,
   DayType,
+  DeleteResult,
   JobHuntLogEntry,
   JobHuntPipelineSummary,
   JobListing,
@@ -613,6 +693,7 @@ export type {
   ParsedWorkbook,
   PrepPlan,
   PrepWeek,
+  PrepWeekInput,
   QuickLink,
   Routine,
   RoutineRun,
@@ -620,6 +701,7 @@ export type {
   RoutineWithLatestRun,
   RunStatus,
   ScheduleRule,
+  ScheduleRuleInput,
   Todo,
   TodaySnapshot,
   WeatherSnapshot,

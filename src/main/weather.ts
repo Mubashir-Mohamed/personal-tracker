@@ -1,10 +1,5 @@
-import { getRawMeta, setRawMeta } from './db'
+import { getRawMeta, setRawMeta, getSetting } from './db'
 import type { WeatherSnapshot } from '../shared/types'
-
-// Kochi, India — where this dashboard was built for.
-const LAT = 9.9312
-const LON = 76.2673
-const LOCATION_LABEL = 'Kochi'
 
 const WEATHER_CODE_LABELS: Record<number, string> = {
   0: 'Clear sky',
@@ -36,9 +31,15 @@ function describeWeatherCode(code: number): string {
   return WEATHER_CODE_LABELS[code] ?? 'Unknown'
 }
 
+/** Location is a Settings field (Profile & Weather), defaulting to Kochi, India — swap it for
+ *  your own city's lat/lon there. */
 export async function fetchWeather(): Promise<WeatherSnapshot | null> {
+  const lat = getSetting('weatherLat')
+  const lon = getSetting('weatherLon')
+  const locationLabel = getSetting('weatherLocationLabel')
+
   const url =
-    `https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}` +
+    `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
     `&current=temperature_2m,weather_code,is_day` +
     `&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max` +
     `&timezone=auto`
@@ -49,7 +50,7 @@ export async function fetchWeather(): Promise<WeatherSnapshot | null> {
     const data = await res.json()
 
     const snapshot: WeatherSnapshot = {
-      locationLabel: LOCATION_LABEL,
+      locationLabel,
       tempC: Math.round(data.current.temperature_2m),
       condition: describeWeatherCode(data.current.weather_code),
       isDay: data.current.is_day === 1,

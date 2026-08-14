@@ -11,6 +11,12 @@ import {
   upsertJobHuntLog,
   getRulesForDayType,
   updateRuleTimes,
+  insertScheduleRule,
+  updateScheduleRule,
+  deleteScheduleRule,
+  insertCategory,
+  updateCategory,
+  deleteCategory,
   getSetting,
   setSetting,
   getTodos,
@@ -21,6 +27,9 @@ import {
   addLink,
   deleteLink,
   getPrepWeeks,
+  addPrepWeek,
+  updatePrepWeek,
+  deletePrepWeek,
   getStudyStreakState,
   markStudiedToday,
   getRawMeta,
@@ -39,10 +48,13 @@ import * as claudePty from './claudePty'
 import type {
   AppSettings,
   BlockStatus,
+  CategoryInput,
   ClaudePtyStartRequest,
   DayType,
   JobHuntLogEntry,
   PrepPlan,
+  PrepWeekInput,
+  ScheduleRuleInput,
   TodaySnapshot
 } from '../shared/types'
 
@@ -84,6 +96,24 @@ export function registerIpcHandlers(): void {
     updateRuleTimes(ruleId, start, end)
   })
 
+  ipcMain.handle('add-rule', (_e, rule: ScheduleRuleInput) => insertScheduleRule(rule))
+  // Callers (Settings.tsx) always re-fetch with get-rules right after, so this just applies
+  // the edit — no dayType is known here to hand back a meaningful rule list.
+  ipcMain.handle('update-rule', (_e, ruleId: number, updates: Partial<ScheduleRuleInput>) => {
+    updateScheduleRule(ruleId, updates)
+  })
+  ipcMain.handle('delete-rule', (_e, ruleId: number, dayType: DayType) => {
+    deleteScheduleRule(ruleId)
+    return getRulesForDayType(dayType)
+  })
+
+  ipcMain.handle('add-category', (_e, input: CategoryInput) => insertCategory(input))
+  ipcMain.handle('update-category', (_e, id: number, updates: Partial<CategoryInput>) => {
+    updateCategory(id, updates)
+    return getCategories()
+  })
+  ipcMain.handle('delete-category', (_e, id: number) => deleteCategory(id))
+
   ipcMain.handle('get-week-stats', () => {
     const { days, totalApplications } = getWeekDayStats()
     return {
@@ -97,12 +127,17 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('get-settings', (): AppSettings => ({
     notificationLeadMinutes: getSetting('notificationLeadMinutes'),
     autoLaunch: getSetting('autoLaunch'),
-    timeTrackerEnabled: getSetting('timeTrackerEnabled')
+    timeTrackerEnabled: getSetting('timeTrackerEnabled'),
+    displayName: getSetting('displayName'),
+    weatherLocationLabel: getSetting('weatherLocationLabel'),
+    weatherLat: getSetting('weatherLat'),
+    weatherLon: getSetting('weatherLon'),
+    jobHuntRoutineId: getSetting('jobHuntRoutineId')
   }))
 
   ipcMain.handle(
     'set-setting',
-    async (_e, key: keyof AppSettings, value: string | number | boolean) => {
+    async (_e, key: keyof AppSettings, value: string | number | boolean | null) => {
       setSetting(key, value as never)
       if (key === 'autoLaunch') await applyAutoLaunch(value as boolean)
     }
@@ -179,6 +214,13 @@ export function registerIpcHandlers(): void {
     const { studyStreakDays, studiedToday } = markStudiedToday()
     return { weeks: getPrepWeeks(), studyStreakDays, studiedToday }
   })
+  ipcMain.handle('add-prep-week', (_e, input: Omit<PrepWeekInput, 'weekNumber'>) =>
+    addPrepWeek(input)
+  )
+  ipcMain.handle('update-prep-week', (_e, id: number, updates: Partial<PrepWeekInput>) =>
+    updatePrepWeek(id, updates)
+  )
+  ipcMain.handle('delete-prep-week', (_e, id: number) => deletePrepWeek(id))
 
   ipcMain.handle('get-weather', async () => getCachedWeather() ?? (await fetchWeather()))
 
