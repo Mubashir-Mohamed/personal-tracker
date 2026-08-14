@@ -16,9 +16,6 @@ import type {
   DayType,
   DeleteResult,
   JobHuntLogEntry,
-  PrepPlan,
-  PrepWeek,
-  PrepWeekInput,
   QuickLink,
   RoutineOverviewEntry,
   RoutineRun,
@@ -103,14 +100,6 @@ const api = {
 
   getRoutinesOverview: (): Promise<RoutineOverviewEntry[]> =>
     ipcRenderer.invoke('get-routines-overview'),
-
-  getPrepPlan: (): Promise<PrepPlan> => ipcRenderer.invoke('get-prep-plan'),
-  markStudiedToday: (): Promise<PrepPlan> => ipcRenderer.invoke('mark-studied-today'),
-  addPrepWeek: (input: Omit<PrepWeekInput, 'weekNumber'>): Promise<PrepWeek[]> =>
-    ipcRenderer.invoke('add-prep-week', input),
-  updatePrepWeek: (id: number, updates: Partial<PrepWeekInput>): Promise<PrepWeek[]> =>
-    ipcRenderer.invoke('update-prep-week', id, updates),
-  deletePrepWeek: (id: number): Promise<PrepWeek[]> => ipcRenderer.invoke('delete-prep-week', id),
 
   getWeather: (): Promise<WeatherSnapshot | null> => ipcRenderer.invoke('get-weather'),
 

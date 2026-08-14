@@ -12,8 +12,7 @@ The landing page, styled as a phosphor-terminal dashboard:
 
 - **Boot bar** — live clock, time-of-day greeting (with your name, if you've set one in Settings), today's date, and current weather for whatever location you've configured (defaults to Kochi, India — see [First-run configuration](#first-run-configuration)).
 - **Routines** — lists every Claude routine linked to an output file (see [Claude Runners](#claude-runners) below), each with its latest snapshot, no separate import step and nothing filtered by subject. A routine whose output looks like a scored list (any sheet with a "title" and a "score" column — job listings, leads, deals, whatever it's ranking) automatically gets richer stats: scanned / strong-fit / new-since-last-run counts and the current run's top match. Everything else just shows a generic sheet/row count for its latest run. The shape is detected automatically per routine — nothing to pick or configure.
-- **Interview prep plan** — a study plan with each week's topics as bullet points, the current week highlighted, and a study streak with a "mark today studied" button. Weeks ship with example starter content and are fully editable — add, edit, or delete weeks from the card's "Edit plan" toggle.
-- **Todos** and **Quick links** — small CRUD lists (add/toggle/delete), both backed by SQLite.
+- **Todos** and **Quick links** — small CRUD lists (add/toggle/delete), both backed by SQLite. Ship with a couple of onboarding-flavored starter items, not fake personal content — delete them and add your own.
 
 ### Time Management
 
@@ -93,7 +92,6 @@ Everything below is optional — the app works out of the box with example data 
 3. **Your weather location** (optional) — same section. Defaults to Kochi, India; set your own location label and lat/lon (look them up on a site like [latlong.net](https://www.latlong.net)).
 4. **Routines** (optional) — if you have any Claude Code routines set up with the `/schedule` skill, link each one to its output file from the **Routines** page (Claude Runners → Routines). Every linked routine then shows up on the Home dashboard's Routines card automatically — no per-routine picking, and no assumption about what the routine is for.
 5. **Claude binary path** (optional) — only needed if auto-detection in **Time Management → Settings → Claude Code** doesn't find your `claude` install.
-6. **Interview prep plan** (optional) — edit the Home dashboard's plan directly from its "Edit plan" toggle, or delete the example weeks and add your own.
 
 ## Data
 

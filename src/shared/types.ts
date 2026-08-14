@@ -79,14 +79,6 @@ export interface CategoryInput {
   soundFile?: string | null
 }
 
-export interface PrepWeekInput {
-  weekNumber: number
-  title: string
-  description: string
-  startDate: string // 'YYYY-MM-DD'
-  endDate: string // 'YYYY-MM-DD'
-}
-
 export interface DeleteResult {
   ok: boolean
   error?: string
@@ -203,22 +195,6 @@ export interface RoutineOverviewEntry {
   runCount: number
   scored: ScoredRunStats | null
   sheetSummary: { sheetCount: number; rowCount: number } | null
-}
-
-export interface PrepWeek {
-  id: number
-  weekNumber: number
-  title: string
-  description: string
-  startDate: string // 'YYYY-MM-DD'
-  endDate: string // 'YYYY-MM-DD'
-  current: boolean
-}
-
-export interface PrepPlan {
-  weeks: PrepWeek[]
-  studyStreakDays: number
-  studiedToday: boolean
 }
 
 export interface WeatherSnapshot {

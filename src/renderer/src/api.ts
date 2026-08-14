@@ -9,8 +9,6 @@ import type {
   ClaudeTranscriptEntry,
   DayType,
   JobHuntLogEntry,
-  PrepPlan,
-  PrepWeek,
   QuickLink,
   RoutineOverviewEntry,
   RoutineRun,
@@ -32,7 +30,6 @@ function toMinutes(t: string): number {
 function buildMockApi(): Window['api'] {
   let nextCategoryId = 100
   let nextRuleId = 100
-  let nextPrepWeekId = 100
 
   const categories: Category[] = [
     { id: 1, name: 'Job Work', color: '#5b8def', soundFile: null, kind: 'work' },
@@ -319,17 +316,14 @@ function buildMockApi(): Window['api'] {
   )
 
   let todos: Todo[] = [
-    { id: 1, text: 'Review daily job match report', done: true, sortOrder: 0 },
-    { id: 2, text: 'Study: RSC & App Router — 1.5h', done: false, sortOrder: 1 },
-    { id: 3, text: 'Update resume with latest project', done: false, sortOrder: 2 }
+    { id: 1, text: 'Build your schedule in Time Management → Settings', done: false, sortOrder: 0 },
+    { id: 2, text: 'Link a Claude Code routine from the Routines page', done: false, sortOrder: 1 },
+    { id: 3, text: 'Delete this todo and add your own', done: false, sortOrder: 2 }
   ]
 
   let links: QuickLink[] = [
-    { id: 1, label: 'Portfolio', url: '#', sortOrder: 0 },
-    { id: 2, label: 'Resume PDF', url: '#', sortOrder: 1 },
-    { id: 3, label: 'Naukri Profile', url: '#', sortOrder: 2 },
-    { id: 4, label: 'GitHub', url: '#', sortOrder: 3 },
-    { id: 5, label: 'Storybook', url: '#', sortOrder: 4 }
+    { id: 1, label: 'GitHub', url: 'https://github.com', sortOrder: 0 },
+    { id: 2, label: 'Claude Code', url: 'https://code.claude.com', sortOrder: 1 }
   ]
 
   // One "scored" routine (job listings) and one generic routine (a reading digest) — the
@@ -361,49 +355,6 @@ function buildMockApi(): Window['api'] {
       sheetSummary: { sheetCount: 1, rowCount: 2 }
     }
   ]
-
-  let prepPlan: PrepPlan = {
-    weeks: [
-      {
-        id: 1,
-        weekNumber: 1,
-        title: 'JS/TS & React fundamentals refresh',
-        description: 'Closures, event loop, hooks internals, rendering behavior.',
-        startDate: dateStr,
-        endDate: dateStr,
-        current: false
-      },
-      {
-        id: 2,
-        weekNumber: 2,
-        title: 'Next.js App Router + RSC',
-        description: 'Server components, streaming, data fetching patterns, caching.',
-        startDate: dateStr,
-        endDate: dateStr,
-        current: true
-      },
-      {
-        id: 3,
-        weekNumber: 3,
-        title: 'System design for frontend leads',
-        description: 'Micro-frontends, monorepo strategy, performance & scale trade-offs.',
-        startDate: dateStr,
-        endDate: dateStr,
-        current: false
-      },
-      {
-        id: 4,
-        weekNumber: 4,
-        title: 'Leadership & mock interviews',
-        description: 'Behavioral rounds, team-lead scenarios, mock panel sessions.',
-        startDate: dateStr,
-        endDate: dateStr,
-        current: false
-      }
-    ],
-    studyStreakDays: 9,
-    studiedToday: false
-  }
 
   const weather: WeatherSnapshot = {
     locationLabel: 'Kochi',
@@ -602,32 +553,6 @@ function buildMockApi(): Window['api'] {
     openExternal: async () => {},
 
     getRoutinesOverview: async () => routinesOverview,
-    getPrepPlan: async () => prepPlan,
-    markStudiedToday: async () => {
-      prepPlan = { ...prepPlan, studiedToday: true, studyStreakDays: prepPlan.studyStreakDays + 1 }
-      return prepPlan
-    },
-    addPrepWeek: async (input) => {
-      const week: PrepWeek = {
-        id: nextPrepWeekId++,
-        weekNumber: prepPlan.weeks.length + 1,
-        current: false,
-        ...input
-      }
-      prepPlan = { ...prepPlan, weeks: [...prepPlan.weeks, week] }
-      return prepPlan.weeks
-    },
-    updatePrepWeek: async (id, updates) => {
-      prepPlan = {
-        ...prepPlan,
-        weeks: prepPlan.weeks.map((w) => (w.id === id ? { ...w, ...updates } : w))
-      }
-      return prepPlan.weeks
-    },
-    deletePrepWeek: async (id) => {
-      prepPlan = { ...prepPlan, weeks: prepPlan.weeks.filter((w) => w.id !== id) }
-      return prepPlan.weeks
-    },
     getWeather: async () => weather,
 
     getClaudeSessions: async () => claudeSessions,
@@ -692,9 +617,6 @@ export type {
   JobHuntLogEntry,
   ParsedSheet,
   ParsedWorkbook,
-  PrepPlan,
-  PrepWeek,
-  PrepWeekInput,
   QuickLink,
   Routine,
   RoutineOverviewEntry,

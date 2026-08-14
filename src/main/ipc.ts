@@ -26,12 +26,6 @@ import {
   getLinks,
   addLink,
   deleteLink,
-  getPrepWeeks,
-  addPrepWeek,
-  updatePrepWeek,
-  deletePrepWeek,
-  getStudyStreakState,
-  markStudiedToday,
   getRawMeta,
   setRawMeta
 } from './db'
@@ -52,8 +46,6 @@ import type {
   ClaudePtyStartRequest,
   DayType,
   JobHuntLogEntry,
-  PrepPlan,
-  PrepWeekInput,
   ScheduleRuleInput,
   TodaySnapshot
 } from '../shared/types'
@@ -204,22 +196,6 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('open-external', (_e, url: string) => shell.openExternal(url))
 
   ipcMain.handle('get-routines-overview', () => getRoutinesOverview())
-
-  ipcMain.handle('get-prep-plan', (): PrepPlan => {
-    const { studyStreakDays, studiedToday } = getStudyStreakState()
-    return { weeks: getPrepWeeks(), studyStreakDays, studiedToday }
-  })
-  ipcMain.handle('mark-studied-today', (): PrepPlan => {
-    const { studyStreakDays, studiedToday } = markStudiedToday()
-    return { weeks: getPrepWeeks(), studyStreakDays, studiedToday }
-  })
-  ipcMain.handle('add-prep-week', (_e, input: Omit<PrepWeekInput, 'weekNumber'>) =>
-    addPrepWeek(input)
-  )
-  ipcMain.handle('update-prep-week', (_e, id: number, updates: Partial<PrepWeekInput>) =>
-    updatePrepWeek(id, updates)
-  )
-  ipcMain.handle('delete-prep-week', (_e, id: number) => deletePrepWeek(id))
 
   ipcMain.handle('get-weather', async () => getCachedWeather() ?? (await fetchWeather()))
 

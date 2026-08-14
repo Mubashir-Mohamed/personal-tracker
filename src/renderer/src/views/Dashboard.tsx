@@ -1,13 +1,6 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { api } from '../api'
-import type {
-  PrepPlan,
-  PrepWeek,
-  QuickLink,
-  RoutineOverviewEntry,
-  Todo,
-  WeatherSnapshot
-} from '../api'
+import type { QuickLink, RoutineOverviewEntry, Todo, WeatherSnapshot } from '../api'
 
 function greeting(hour: number): string {
   if (hour < 12) return 'good morning'
@@ -110,10 +103,10 @@ function RoutinesOverviewCard(): React.JSX.Element {
     api.openRoutineRunFile(runId)
   }
 
-  if (!routines) return <div className="card card-pad db-col-7">Loading routines…</div>
+  if (!routines) return <div className="card card-pad db-col-12">Loading routines…</div>
 
   return (
-    <div className="card card-pad db-col-7">
+    <div className="card card-pad db-col-12">
       <div className="term-head">
         <div className="term-title">
           ~/routines<span className="term-sep"> %</span> ls -la --latest
@@ -180,167 +173,6 @@ function RoutinesOverviewCard(): React.JSX.Element {
           ))}
         </div>
       )}
-    </div>
-  )
-}
-
-function PrepWeekEditRow({
-  week,
-  onSaved,
-  onDeleted
-}: {
-  week: PrepWeek
-  onSaved: () => void
-  onDeleted: () => void
-}): React.JSX.Element {
-  const [title, setTitle] = useState(week.title)
-  const [description, setDescription] = useState(week.description)
-
-  const commit = (): void => {
-    if (title === week.title && description === week.description) return
-    api.updatePrepWeek(week.id, { title, description }).then(onSaved)
-  }
-
-  return (
-    <div className={`plan-week${week.current ? ' current' : ''}`}>
-      <div className="plan-badge">WK {week.weekNumber}</div>
-      <div
-        className="plan-body"
-        style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1 }}
-      >
-        <input
-          type="text"
-          value={title}
-          placeholder="Week title"
-          onChange={(e) => setTitle(e.target.value)}
-          onBlur={commit}
-          style={{
-            background: 'var(--bg-elevated)',
-            border: '1px solid var(--border)',
-            borderRadius: 8,
-            padding: '5px 8px',
-            fontSize: 12.5,
-            color: 'var(--text-primary)'
-          }}
-        />
-        <textarea
-          value={description}
-          placeholder="Comma-separated topics"
-          onChange={(e) => setDescription(e.target.value)}
-          onBlur={commit}
-          rows={2}
-          style={{
-            background: 'var(--bg-elevated)',
-            border: '1px solid var(--border)',
-            borderRadius: 8,
-            padding: '5px 8px',
-            fontSize: 12,
-            color: 'var(--text-primary)',
-            resize: 'vertical'
-          }}
-        />
-      </div>
-      <button
-        className="icon-btn"
-        onClick={onDeleted}
-        title="Delete week"
-        style={{ alignSelf: 'flex-start' }}
-      >
-        ×
-      </button>
-    </div>
-  )
-}
-
-function PrepPlanCard(): React.JSX.Element {
-  const [plan, setPlan] = useState<PrepPlan | null>(null)
-  const [editing, setEditing] = useState(false)
-
-  const refresh = useCallback(() => {
-    api.getPrepPlan().then(setPlan)
-  }, [])
-
-  useEffect(() => {
-    refresh()
-  }, [refresh])
-
-  const markStudied = (): void => {
-    api.markStudiedToday().then(setPlan)
-  }
-
-  const deleteWeek = (id: number): void => {
-    api.deletePrepWeek(id).then(refresh)
-  }
-
-  const addWeek = (): void => {
-    api
-      .addPrepWeek({
-        title: 'New week',
-        description: 'Topic one, topic two',
-        startDate: new Date().toISOString().slice(0, 10),
-        endDate: new Date().toISOString().slice(0, 10)
-      })
-      .then(refresh)
-  }
-
-  if (!plan) return <div className="card card-pad db-col-5">Loading interview prep plan…</div>
-
-  return (
-    <div className="card card-pad db-col-5">
-      <div className="term-head">
-        <div className="term-title">
-          ~/interview-prep<span className="term-sep"> %</span> cat plan.md
-        </div>
-        <button
-          className="btn btn-ghost"
-          style={{ padding: '3px 10px', fontSize: 11.5 }}
-          onClick={() => setEditing((e) => !e)}
-        >
-          {editing ? 'Done' : 'Edit plan'}
-        </button>
-      </div>
-
-      {editing
-        ? plan.weeks.map((w) => (
-            <PrepWeekEditRow
-              key={w.id}
-              week={w}
-              onSaved={refresh}
-              onDeleted={() => deleteWeek(w.id)}
-            />
-          ))
-        : plan.weeks.map((w) => (
-            <div className={`plan-week${w.current ? ' current' : ''}`} key={w.id}>
-              <div className="plan-badge">WK {w.weekNumber}</div>
-              <div className="plan-body">
-                <div className="plan-title">{w.title}</div>
-                <ul className="plan-items">
-                  {w.description
-                    .split(',')
-                    .map((item) => item.replace(/\.$/, '').trim())
-                    .filter(Boolean)
-                    .map((item) => (
-                      <li key={item}>{item}</li>
-                    ))}
-                </ul>
-              </div>
-            </div>
-          ))}
-
-      {editing && (
-        <button className="btn" style={{ marginTop: 8 }} onClick={addWeek}>
-          + Add week
-        </button>
-      )}
-
-      <div className="streak-line">
-        🔥 {plan.studyStreakDays}-day study streak
-        {!plan.studiedToday && (
-          <button className="btn" style={{ marginLeft: 10 }} onClick={markStudied}>
-            Mark today studied
-          </button>
-        )}
-      </div>
     </div>
   )
 }
@@ -494,7 +326,6 @@ export default function Dashboard(): React.JSX.Element {
       <BootBar />
       <div className="db-grid">
         <RoutinesOverviewCard />
-        <PrepPlanCard />
         <TodoCard />
         <LinksCard />
       </div>
