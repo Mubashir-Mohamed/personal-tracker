@@ -104,3 +104,7 @@ The one exception is the Home dashboard's weather chip, which calls the public O
 - Built and tested primarily on macOS; `electron-builder` is configured for macOS, Windows, and Linux (dmg, nsis, AppImage/deb/snap).
 - Native notification *sounds* are macOS-only today (the notifications themselves still fire cross-platform via Electron); on other platforms you'll get the notification without the distinct per-category sound.
 - The menu bar tray icon and "launch at login" behavior use cross-platform Electron/`auto-launch` APIs.
+
+## License
+
+[MIT](LICENSE)
