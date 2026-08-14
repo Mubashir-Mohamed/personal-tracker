@@ -16,11 +16,11 @@ import type {
   DayType,
   DeleteResult,
   JobHuntLogEntry,
-  JobHuntPipelineSummary,
   PrepPlan,
   PrepWeek,
   PrepWeekInput,
   QuickLink,
+  RoutineOverviewEntry,
   RoutineRun,
   RoutineRunDetail,
   RoutineWithLatestRun,
@@ -101,8 +101,8 @@ const api = {
   deleteLink: (id: number): Promise<QuickLink[]> => ipcRenderer.invoke('delete-link', id),
   openExternal: (url: string): Promise<void> => ipcRenderer.invoke('open-external', url),
 
-  getJobHuntPipeline: (): Promise<JobHuntPipelineSummary> =>
-    ipcRenderer.invoke('get-job-hunt-pipeline'),
+  getRoutinesOverview: (): Promise<RoutineOverviewEntry[]> =>
+    ipcRenderer.invoke('get-routines-overview'),
 
   getPrepPlan: (): Promise<PrepPlan> => ipcRenderer.invoke('get-prep-plan'),
   markStudiedToday: (): Promise<PrepPlan> => ipcRenderer.invoke('mark-studied-today'),

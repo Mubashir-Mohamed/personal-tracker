@@ -6,7 +6,6 @@ import type {
   CategoryKind,
   ClaudeBinaryStatus,
   DayType,
-  RoutineWithLatestRun,
   ScheduleRule
 } from '../api'
 
@@ -355,57 +354,6 @@ function CategoryManager({
   )
 }
 
-function JobHuntRoutineSettings(): React.JSX.Element {
-  const [routines, setRoutines] = useState<RoutineWithLatestRun[]>([])
-  const [selected, setSelected] = useState<number | null>(null)
-  const [saving, setSaving] = useState(false)
-
-  useEffect(() => {
-    api.getRoutines().then(setRoutines)
-    api.getSettings().then((s) => setSelected(s.jobHuntRoutineId))
-  }, [])
-
-  const save = async (value: string): Promise<void> => {
-    const id = value ? Number(value) : null
-    setSelected(id)
-    setSaving(true)
-    await api.setSetting('jobHuntRoutineId', id)
-    setSaving(false)
-  }
-
-  return (
-    <div className="card card-pad settings-section">
-      <div className="section-title">Job Hunt pipeline</div>
-      <div className="block-meta" style={{ marginBottom: 10 }}>
-        Pick which routine (auto-discovered from <code>~/.claude/scheduled-tasks</code>) feeds the
-        Home dashboard&apos;s job-hunt card — nothing is guessed by name. Set one up with the{' '}
-        <code>/schedule</code> skill in Claude Code first if the list below is empty, then link it
-        to its output file from the Routines page.
-      </div>
-      {routines.length === 0 ? (
-        <div className="empty-state">No routines discovered yet.</div>
-      ) : (
-        <div className="settings-field-row">
-          <span>Linked routine</span>
-          <select
-            style={{ ...inputStyle, minWidth: 220 }}
-            value={selected ?? ''}
-            disabled={saving}
-            onChange={(e) => save(e.target.value)}
-          >
-            <option value="">None</option>
-            {routines.map((r) => (
-              <option key={r.id} value={r.id}>
-                {r.name}
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
-    </div>
-  )
-}
-
 function ProfileAndWeatherSettings({
   settings,
   updateSetting
@@ -619,8 +567,6 @@ export default function Settings(): React.JSX.Element {
       )}
 
       <CategoryManager categories={categories} onChanged={refreshCategories} />
-
-      <JobHuntRoutineSettings />
 
       {settings && <ProfileAndWeatherSettings settings={settings} updateSetting={updateSetting} />}
 

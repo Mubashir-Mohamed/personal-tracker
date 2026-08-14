@@ -11,7 +11,7 @@ This is a **self-hosted, single-user app**: everyone who clones and runs it gets
 The landing page, styled as a phosphor-terminal dashboard:
 
 - **Boot bar** — live clock, time-of-day greeting (with your name, if you've set one in Settings), today's date, and current weather for whatever location you've configured (defaults to Kochi, India — see [First-run configuration](#first-run-configuration)).
-- **Job hunt pipeline** — reads whichever Claude routine you've picked in Settings as your job-hunt pipeline, straight from that routine's already-archived snapshots (see [Claude Runners](#claude-runners) below, no separate import step): scanned / strong-fit / new-since-last-run counts, the single **best-scoring match across every archived run to date**, the current run's top matches with score bars, and location/source breakdowns. Nothing is auto-detected by name — you choose the routine explicitly.
+- **Routines** — lists every Claude routine linked to an output file (see [Claude Runners](#claude-runners) below), each with its latest snapshot, no separate import step and nothing filtered by subject. A routine whose output looks like a scored list (any sheet with a "title" and a "score" column — job listings, leads, deals, whatever it's ranking) automatically gets richer stats: scanned / strong-fit / new-since-last-run counts and the current run's top match. Everything else just shows a generic sheet/row count for its latest run. The shape is detected automatically per routine — nothing to pick or configure.
 - **Interview prep plan** — a study plan with each week's topics as bullet points, the current week highlighted, and a study streak with a "mark today studied" button. Weeks ship with example starter content and are fully editable — add, edit, or delete weeks from the card's "Edit plan" toggle.
 - **Todos** and **Quick links** — small CRUD lists (add/toggle/delete), both backed by SQLite.
 
@@ -32,7 +32,7 @@ Tracks recurring Claude Code routines (set up via the `/schedule` skill):
 - Routines are auto-discovered from `~/.claude/scheduled-tasks/*/SKILL.md` — real name, description, and prompt, no API needed. This works for whatever routines *you* have set up locally; nothing here is tied to any particular routine name.
 - Link a routine to the output file it overwrites each run (via a native file picker). The app polls every 5 minutes, and whenever that file changes it archives a dated snapshot and parses it.
 - Each day's snapshot is browsable as a real table (not an embedded spreadsheet) — sheets render as tabs, with a "Reveal original file" button for the raw file.
-- Any routine that produces a spreadsheet with a "Title/Company/Score/..." style sheet can additionally be picked as your **Job Hunt pipeline** in Settings, to power the Home dashboard's job-hunt card.
+- Every routine linked to an output file shows up on the Home dashboard's Routines card automatically (see [Home](#home) above) — there's no per-routine setup beyond linking the file here.
 
 ### Claude Code
 
@@ -91,7 +91,7 @@ Everything below is optional — the app works out of the box with example data 
 1. **Your schedule** — go to **Time Management → Settings** and edit, delete, or add blocks to the weekday/weekend schedule. Add whatever categories you need (name, color, type) in the same page; a category's *type* determines its notification sound and which stats streak it counts toward.
 2. **Your name** (optional) — **Time Management → Settings → Profile & weather**. Shown in the Home dashboard's greeting; leave it blank for a generic greeting.
 3. **Your weather location** (optional) — same section. Defaults to Kochi, India; set your own location label and lat/lon (look them up on a site like [latlong.net](https://www.latlong.net)).
-4. **Job Hunt pipeline** (optional) — if you have a Claude Code routine that scrapes/scores job listings into a spreadsheet, set it up with the `/schedule` skill, link its output file from the **Routines** page, then pick it as your **Job Hunt pipeline** in **Time Management → Settings**. Nothing is auto-linked by routine name.
+4. **Routines** (optional) — if you have any Claude Code routines set up with the `/schedule` skill, link each one to its output file from the **Routines** page (Claude Runners → Routines). Every linked routine then shows up on the Home dashboard's Routines card automatically — no per-routine picking, and no assumption about what the routine is for.
 5. **Claude binary path** (optional) — only needed if auto-detection in **Time Management → Settings → Claude Code** doesn't find your `claude` install.
 6. **Interview prep plan** (optional) — edit the Home dashboard's plan directly from its "Edit plan" toggle, or delete the example weeks and add your own.
 

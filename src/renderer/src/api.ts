@@ -9,10 +9,10 @@ import type {
   ClaudeTranscriptEntry,
   DayType,
   JobHuntLogEntry,
-  JobHuntPipelineSummary,
   PrepPlan,
   PrepWeek,
   QuickLink,
+  RoutineOverviewEntry,
   RoutineRun,
   RoutineRunDetail,
   RoutineWithLatestRun,
@@ -147,8 +147,7 @@ function buildMockApi(): Window['api'] {
     displayName: '',
     weatherLocationLabel: 'Kochi',
     weatherLat: 9.9312,
-    weatherLon: 76.2673,
-    jobHuntRoutineId: 1
+    weatherLon: 76.2673
   }
 
   const weekStats: WeekStats = {
@@ -206,6 +205,18 @@ function buildMockApi(): Window['api'] {
       createdAt: today.toISOString(),
       latestRunDate: null,
       runCount: 0
+    },
+    {
+      id: 3,
+      taskId: 'reading-list-digest',
+      name: 'reading-list-digest',
+      description: 'Summarize saved articles into a weekly reading digest',
+      prompt: "Summarize this week's saved reading-list articles.",
+      scheduleLabel: 'Weekly on Sunday',
+      watchPath: '/Users/mock/Reading/digest.xlsx',
+      createdAt: today.toISOString(),
+      latestRunDate: dateStr,
+      runCount: 1
     }
   ]
 
@@ -222,68 +233,88 @@ function buildMockApi(): Window['api'] {
       errorMessage: null
     }
   })
+  // A second, unrelated routine — demonstrates that the Routines card is generic, not job-specific.
+  routineRuns.push({
+    id: 100,
+    routineId: 3,
+    runDate: dateStr,
+    detectedAt: today.toISOString(),
+    sourceMtime: today.toISOString(),
+    archivedPath: '/Users/mock/routine-archives/3/digest.xlsx',
+    status: 'parsed',
+    errorMessage: null
+  })
+
+  const scoredSheets = [
+    {
+      name: 'Job Openings',
+      rows: [
+        ['Daily Job Openings Report — Last 24 Hours'],
+        ['Priority locations: Kochi > Thiruvananthapuram'],
+        [],
+        [
+          'Title',
+          'Company',
+          'Location',
+          'Date Posted',
+          'Source',
+          'Match Score /100',
+          'Reason',
+          'Direct Link',
+          'Tailored Resume'
+        ],
+        [
+          'Senior Software Engineer',
+          'NOV',
+          'Kochi',
+          dateStr,
+          'LinkedIn',
+          '68',
+          'Generic senior SWE title at an established engineering company.',
+          'https://in.linkedin.com/jobs/view/example',
+          ''
+        ],
+        [
+          'Backend Engineer',
+          'Zoho',
+          'Chennai',
+          dateStr,
+          'Naukri',
+          '85',
+          'Strong stack overlap.',
+          'https://www.naukri.com/job-listings/example',
+          'Zoho_BackendEngineer_resume.pdf'
+        ]
+      ]
+    },
+    {
+      name: 'Notes',
+      rows: [
+        ['Notes & Gaps — Daily Job Openings Report'],
+        ['1. No resume on file'],
+        ['Match scores are generic estimates, not personalized. Attach a resume for accuracy.']
+      ]
+    }
+  ]
+  // A routine whose output isn't a scored list — demonstrates the Routines card's generic
+  // fallback (sheet/row counts) rather than the job-listing-shaped stats above.
+  const genericSheets = [
+    {
+      name: 'Digest',
+      rows: [
+        ['Weekly Reading Digest'],
+        [],
+        ['Article', 'Source', 'Saved On'],
+        ['Why local-first software is having a moment', 'inkandswitch.com', dateStr],
+        ['A field guide to SQLite in production', 'fly.io', dateStr]
+      ]
+    }
+  ]
 
   const runDetails: Record<number, RoutineRunDetail> = Object.fromEntries(
     routineRuns.map((run) => [
       run.id,
-      {
-        ...run,
-        parsed: {
-          sheets: [
-            {
-              name: 'Job Openings',
-              rows: [
-                ['Daily Job Openings Report — Last 24 Hours'],
-                [`Run date: ${run.runDate}  |  Priority locations: Kochi > Thiruvananthapuram`],
-                [],
-                [
-                  'Title',
-                  'Company',
-                  'Location',
-                  'Date Posted',
-                  'Source',
-                  'Match Score /100',
-                  'Reason',
-                  'Direct Link',
-                  'Tailored Resume'
-                ],
-                [
-                  'Senior Software Engineer',
-                  'NOV',
-                  'Kochi',
-                  run.runDate,
-                  'LinkedIn',
-                  '68',
-                  'Generic senior SWE title at an established engineering company.',
-                  'https://in.linkedin.com/jobs/view/example',
-                  ''
-                ],
-                [
-                  'Backend Engineer',
-                  'Zoho',
-                  'Chennai',
-                  run.runDate,
-                  'Naukri',
-                  '85',
-                  'Strong stack overlap.',
-                  'https://www.naukri.com/job-listings/example',
-                  'Zoho_BackendEngineer_resume.pdf'
-                ]
-              ]
-            },
-            {
-              name: 'Notes',
-              rows: [
-                ['Notes & Gaps — Daily Job Openings Report'],
-                ['1. No resume on file'],
-                [
-                  'Match scores are generic estimates, not personalized. Attach a resume for accuracy.'
-                ]
-              ]
-            }
-          ]
-        }
-      }
+      { ...run, parsed: { sheets: run.routineId === 3 ? genericSheets : scoredSheets } }
     ])
   )
 
@@ -301,63 +332,35 @@ function buildMockApi(): Window['api'] {
     { id: 5, label: 'Storybook', url: '#', sortOrder: 4 }
   ]
 
-  const jobHuntPipeline: JobHuntPipelineSummary = {
-    linked: true,
-    scheduleLabel: 'Daily at 7:03 AM',
-    bestMatchEver: {
-      title: 'Full Stack Engineer (Fintech Focused)',
-      company: '8byte',
-      location: 'Bengaluru',
-      datePosted: '2026-07-28',
-      score: 100,
-      reason: 'Matches: react, typescript, node.js, fintech domain',
-      source: 'LinkedIn',
-      url: '#',
-      runDate: '2026-07-28'
-    },
-    runs: [
-      {
-        runId: 8,
-        runDate: '2026-08-01',
+  // One "scored" routine (job listings) and one generic routine (a reading digest) — the
+  // Routines card treats both the same way, it just shows richer stats when the shape fits.
+  const routinesOverview: RoutineOverviewEntry[] = [
+    {
+      routineId: 1,
+      name: 'daily-job-listing',
+      scheduleLabel: 'Daily at 7:03 AM',
+      latestRunId: 3,
+      latestRunDate: dateStr,
+      runCount: 3,
+      scored: {
         scanned: 105,
         strongFits: 7,
         newSinceLastRun: 102,
         topMatch: { title: 'Senior Python Full Stack Lead', company: 'Innova Solutions', score: 77 }
       },
-      {
-        runId: 7,
-        runDate: '2026-07-31',
-        scanned: 93,
-        strongFits: 5,
-        newSinceLastRun: 8,
-        topMatch: { title: 'Tech Lead, Full Stack', company: 'CGI', score: 71 }
-      },
-      {
-        runId: 6,
-        runDate: '2026-07-30',
-        scanned: 88,
-        strongFits: 6,
-        newSinceLastRun: 15,
-        topMatch: { title: 'Full Stack AI Developer', company: 'Composite Structures', score: 74 }
-      },
-      {
-        runId: 5,
-        runDate: '2026-07-29',
-        scanned: 74,
-        strongFits: 4,
-        newSinceLastRun: 3,
-        topMatch: { title: 'Backend Engineer', company: 'Zoho', score: 68 }
-      },
-      {
-        runId: 4,
-        runDate: '2026-07-28',
-        scanned: 81,
-        strongFits: 9,
-        newSinceLastRun: 20,
-        topMatch: { title: 'Full Stack Engineer (Fintech Focused)', company: '8byte', score: 100 }
-      }
-    ]
-  }
+      sheetSummary: null
+    },
+    {
+      routineId: 3,
+      name: 'reading-list-digest',
+      scheduleLabel: 'Weekly on Sunday',
+      latestRunId: 100,
+      latestRunDate: dateStr,
+      runCount: 1,
+      scored: null,
+      sheetSummary: { sheetCount: 1, rowCount: 2 }
+    }
+  ]
 
   let prepPlan: PrepPlan = {
     weeks: [
@@ -598,7 +601,7 @@ function buildMockApi(): Window['api'] {
     },
     openExternal: async () => {},
 
-    getJobHuntPipeline: async () => jobHuntPipeline,
+    getRoutinesOverview: async () => routinesOverview,
     getPrepPlan: async () => prepPlan,
     markStudiedToday: async () => {
       prepPlan = { ...prepPlan, studiedToday: true, studyStreakDays: prepPlan.studyStreakDays + 1 }
@@ -687,8 +690,6 @@ export type {
   DayType,
   DeleteResult,
   JobHuntLogEntry,
-  JobHuntPipelineSummary,
-  JobListing,
   ParsedSheet,
   ParsedWorkbook,
   PrepPlan,
@@ -696,12 +697,15 @@ export type {
   PrepWeekInput,
   QuickLink,
   Routine,
+  RoutineOverviewEntry,
   RoutineRun,
   RoutineRunDetail,
   RoutineWithLatestRun,
   RunStatus,
   ScheduleRule,
   ScheduleRuleInput,
+  ScoredItem,
+  ScoredRunStats,
   Todo,
   TodaySnapshot,
   WeatherSnapshot,

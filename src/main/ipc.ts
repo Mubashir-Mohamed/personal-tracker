@@ -40,7 +40,7 @@ import { getWeekDayStats, getStreakForKind } from './stats'
 import { applyAutoLaunch } from './autoLaunch'
 import { getRoutines, getRoutineRuns, getRoutineRunDetail, linkRoutineOutput } from './routinesDb'
 import { checkRoutinesNow } from './routines'
-import { getJobHuntPipelineSummary } from './jobHuntPipeline'
+import { getRoutinesOverview } from './routinesOverview'
 import { fetchWeather, getCachedWeather } from './weather'
 import { listSessions, getTranscript } from './claudeSessions'
 import { resolveClaudeBinary, setBinaryOverride } from './claudeCli'
@@ -131,8 +131,7 @@ export function registerIpcHandlers(): void {
     displayName: getSetting('displayName'),
     weatherLocationLabel: getSetting('weatherLocationLabel'),
     weatherLat: getSetting('weatherLat'),
-    weatherLon: getSetting('weatherLon'),
-    jobHuntRoutineId: getSetting('jobHuntRoutineId')
+    weatherLon: getSetting('weatherLon')
   }))
 
   ipcMain.handle(
@@ -204,7 +203,7 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('delete-link', (_e, id: number) => deleteLink(id))
   ipcMain.handle('open-external', (_e, url: string) => shell.openExternal(url))
 
-  ipcMain.handle('get-job-hunt-pipeline', () => getJobHuntPipelineSummary())
+  ipcMain.handle('get-routines-overview', () => getRoutinesOverview())
 
   ipcMain.handle('get-prep-plan', (): PrepPlan => {
     const { studyStreakDays, studiedToday } = getStudyStreakState()

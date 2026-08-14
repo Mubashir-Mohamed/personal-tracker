@@ -62,9 +62,6 @@ export interface AppSettings {
   weatherLocationLabel: string
   weatherLat: number
   weatherLon: number
-  /** Which auto-discovered Claude routine (see Routine below) feeds the Home dashboard's job-hunt
-   *  pipeline card. null = none selected yet, picked explicitly in Settings (no name-guessing). */
-  jobHuntRoutineId: number | null
 }
 
 export interface ScheduleRuleInput {
@@ -174,7 +171,9 @@ export interface QuickLink {
   sortOrder: number
 }
 
-export interface JobListing {
+/** A row from any routine's output sheet that happens to look like a scored list — has both a
+ *  "title" and a "score" column (job listings, leads, deals, whatever the routine produces). */
+export interface ScoredItem {
   title: string
   company: string
   location: string
@@ -185,20 +184,25 @@ export interface JobListing {
   url: string
 }
 
-export interface JobHuntRunSummary {
-  runId: number
-  runDate: string
+export interface ScoredRunStats {
   scanned: number
   strongFits: number
   newSinceLastRun: number
   topMatch: { title: string; company: string; score: number } | null
 }
 
-export interface JobHuntPipelineSummary {
-  linked: boolean
+/** One row of the Home dashboard's Routines card — every routine that's linked to an output
+ *  file, regardless of what it's for. `scored` is populated automatically when the latest run's
+ *  output looks like a scored list; otherwise `sheetSummary` gives a generic row/sheet count. */
+export interface RoutineOverviewEntry {
+  routineId: number
+  name: string
   scheduleLabel: string | null
-  bestMatchEver: (JobListing & { runDate: string }) | null
-  runs: JobHuntRunSummary[]
+  latestRunId: number | null
+  latestRunDate: string | null
+  runCount: number
+  scored: ScoredRunStats | null
+  sheetSummary: { sheetCount: number; rowCount: number } | null
 }
 
 export interface PrepWeek {

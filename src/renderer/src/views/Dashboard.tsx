@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api } from '../api'
 import type {
-  JobHuntPipelineSummary,
   PrepPlan,
   PrepWeek,
   QuickLink,
+  RoutineOverviewEntry,
   Todo,
   WeatherSnapshot
 } from '../api'
@@ -94,12 +94,12 @@ function formatRunDate(dateStr: string): { dow: string; dom: string } {
   }
 }
 
-function JobHuntCard(): React.JSX.Element {
-  const [summary, setSummary] = useState<JobHuntPipelineSummary | null>(null)
+function RoutinesOverviewCard(): React.JSX.Element {
+  const [routines, setRoutines] = useState<RoutineOverviewEntry[] | null>(null)
 
   useEffect(() => {
     const load = (): void => {
-      api.getJobHuntPipeline().then(setSummary)
+      api.getRoutinesOverview().then(setRoutines)
     }
     load()
     const interval = setInterval(load, 5 * 60_000)
@@ -110,87 +110,74 @@ function JobHuntCard(): React.JSX.Element {
     api.openRoutineRunFile(runId)
   }
 
-  if (!summary) return <div className="card card-pad db-col-7">Loading job hunt pipeline…</div>
-
-  if (!summary.linked) {
-    return (
-      <div className="card card-pad db-col-7">
-        <div className="term-head">
-          <div className="term-title">
-            ~/job-hunt<span className="term-sep"> %</span> pipeline.sh --history
-          </div>
-        </div>
-        <div className="task-empty">
-          No job-hunt routine selected yet — pick one for &quot;Job Hunt pipeline&quot; in Settings
-          (it must already be linked to an output file from the Routines page).
-        </div>
-      </div>
-    )
-  }
+  if (!routines) return <div className="card card-pad db-col-7">Loading routines…</div>
 
   return (
     <div className="card card-pad db-col-7">
       <div className="term-head">
         <div className="term-title">
-          ~/job-hunt<span className="term-sep"> %</span> pipeline.sh --history
+          ~/routines<span className="term-sep"> %</span> ls -la --latest
         </div>
-        {summary.scheduleLabel && <div className="term-tag">Apify · {summary.scheduleLabel}</div>}
       </div>
 
-      {summary.bestMatchEver && (
-        <div className="best-match">
-          <div className="best-match-label">🏆 Best match to date</div>
-          <div className="match">
-            <div className="co">
-              {summary.bestMatchEver.title}{' '}
-              <span className="role">
-                · {summary.bestMatchEver.company} · {summary.bestMatchEver.location}
-              </span>
-            </div>
-            <div className="bar">
-              <div
-                className="bar-fill"
-                style={{ width: `${Math.min(100, summary.bestMatchEver.score)}%` }}
-              />
-            </div>
-            <div className="score">{summary.bestMatchEver.score}%</div>
-          </div>
+      {routines.length === 0 ? (
+        <div className="task-empty">
+          No routines linked to an output file yet — set one up with the <code>/schedule</code>{' '}
+          skill in Claude Code, then link its output file from the Routines page and it&apos;ll show
+          up here automatically.
         </div>
-      )}
-
-      {summary.runs.length === 0 ? (
-        <div className="task-empty">No runs archived yet — check back after the next run.</div>
       ) : (
         <div className="run-list">
-          {summary.runs.map((run) => {
-            const { dow, dom } = formatRunDate(run.runDate)
-            return (
-              <div className="run-row" key={run.runId}>
-                <div className="run-date">
-                  <div className="dow">{dow}</div>
-                  <div className="dom">{dom}</div>
-                </div>
-                <div className="run-stats">
-                  <b>{run.scanned}</b> scanned · <b>{run.strongFits}</b> strong fits ·{' '}
-                  <span className="new-tag">+{run.newSinceLastRun} new</span>
-                  {run.topMatch && (
-                    <div className="run-top">
-                      top: {run.topMatch.score}% · {run.topMatch.title} · {run.topMatch.company}
-                    </div>
-                  )}
-                </div>
-                <div className="run-actions">
+          {routines.map((r) => (
+            <div className="run-row" key={r.routineId}>
+              <div className="run-date">
+                {r.latestRunDate ? (
+                  (() => {
+                    const { dow, dom } = formatRunDate(r.latestRunDate!)
+                    return (
+                      <>
+                        <div className="dow">{dow}</div>
+                        <div className="dom">{dom}</div>
+                      </>
+                    )
+                  })()
+                ) : (
+                  <div className="dom">—</div>
+                )}
+              </div>
+              <div className="run-stats">
+                <b>{r.name}</b>
+                {r.scheduleLabel && <span className="new-tag">{r.scheduleLabel}</span>}
+                {r.scored ? (
+                  <div className="run-top">
+                    {r.scored.scanned} scanned · {r.scored.strongFits} strong fits · +
+                    {r.scored.newSinceLastRun} new
+                    {r.scored.topMatch &&
+                      ` · top: ${r.scored.topMatch.score}% ${r.scored.topMatch.title}`}
+                  </div>
+                ) : r.sheetSummary ? (
+                  <div className="run-top">
+                    {r.sheetSummary.sheetCount} sheet{r.sheetSummary.sheetCount === 1 ? '' : 's'} ·{' '}
+                    {r.sheetSummary.rowCount} row{r.sheetSummary.rowCount === 1 ? '' : 's'} in
+                    latest snapshot
+                  </div>
+                ) : (
+                  <div className="run-top">No runs archived yet</div>
+                )}
+              </div>
+              <div className="run-actions">
+                {r.latestRunId != null && (
                   <button
                     className="icon-btn download"
                     title="Open original report"
-                    onClick={() => openRun(run.runId)}
+                    onClick={() => openRun(r.latestRunId!)}
                   >
                     <DownloadIcon />
                   </button>
-                </div>
+                )}
               </div>
-            )
-          })}
+            </div>
+          ))}
         </div>
       )}
     </div>
@@ -506,7 +493,7 @@ export default function Dashboard(): React.JSX.Element {
     <>
       <BootBar />
       <div className="db-grid">
-        <JobHuntCard />
+        <RoutinesOverviewCard />
         <PrepPlanCard />
         <TodoCard />
         <LinksCard />

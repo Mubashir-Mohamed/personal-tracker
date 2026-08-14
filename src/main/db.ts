@@ -502,9 +502,6 @@ export function getSetting<T extends keyof AppSettings>(key: T): AppSettings[T] 
   if (key === 'weatherLocationLabel') return (raw ?? DEFAULT_WEATHER_LABEL) as AppSettings[T]
   if (key === 'weatherLat') return Number(raw ?? DEFAULT_WEATHER_LAT) as AppSettings[T]
   if (key === 'weatherLon') return Number(raw ?? DEFAULT_WEATHER_LON) as AppSettings[T]
-  if (key === 'jobHuntRoutineId') {
-    return (raw && raw !== 'null' ? Number(raw) : null) as AppSettings[T]
-  }
   throw new Error(`Unknown setting key: ${String(key)}`)
 }
 
